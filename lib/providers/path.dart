@@ -16,6 +16,4 @@ class PathItem with ChangeNotifier {
     required this.imageOrientation,
     required this.textMemo,
   });
-
-  //testing
 }
