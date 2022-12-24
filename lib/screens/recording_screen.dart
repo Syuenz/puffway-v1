@@ -1,12 +1,38 @@
+import 'dart:async';
+import 'dart:math';
+import 'package:vector_math/vector_math_64.dart' hide Colors;
+import 'package:motion_sensors/motion_sensors.dart';
+
 import 'package:flutter/material.dart';
 import 'package:puffway/widgets/all_directions_body.dart';
 import 'package:puffway/widgets/path_info_item.dart';
 import 'package:puffway/widgets/recording_bottom.dart';
 
-class RecordingScreen extends StatelessWidget {
+class RecordingScreen extends StatefulWidget {
   static const routeName = "/recording";
 
   RecordingScreen({super.key});
+
+  @override
+  State<RecordingScreen> createState() => _RecordingScreenState();
+}
+
+class _RecordingScreenState extends State<RecordingScreen> {
+  //direction
+
+  var directionPointer = 0.0;
+  var currentDegree = 0.0;
+  var left = 0.0;
+  var right = 0.0;
+  var direction = "Straight";
+
+  //footsteps
+  int steps = 0;
+  double exactDistance = 0.0;
+  double previousMagnitude = 0.0;
+  double magnitudeDelta = 0.0;
+  var initial = true;
+
   final List<String> test = [
     '1',
     '2',
@@ -19,6 +45,11 @@ class RecordingScreen extends StatelessWidget {
     '9',
     '10',
   ];
+
+  double calculateMagnitude(double x, double y, double z) {
+    double distance = sqrt(x * x + y * y + z * z);
+    return distance;
+  }
 
   @override
   Widget build(BuildContext context) {

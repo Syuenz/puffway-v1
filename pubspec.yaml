@@ -47,6 +47,9 @@ dependencies:
   card_swiper:
     git:
       url: https://github.com/Syuenz/card_swiper
+  firebase_core: ^2.4.0
+  cloud_firestore: ^4.3.0
+  motion_sensors: ^0.1.0
 
 dev_dependencies:
   flutter_test:

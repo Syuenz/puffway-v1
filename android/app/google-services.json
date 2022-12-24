@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "235373409149",
+    "project_id": "puffway-bd952",
+    "storage_bucket": "puffway-bd952.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:235373409149:android:85a4d23f49018efa8e5214",
+        "android_client_info": {
+          "package_name": "com.example.puffway"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "235373409149-c3uohsjiisshj9htaeq5qs3u8ujjv6ht.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCnaflD6umXB2eipGO2In7ZFud80IgOc0Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "235373409149-c3uohsjiisshj9htaeq5qs3u8ujjv6ht.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

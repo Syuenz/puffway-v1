@@ -1,4 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:puffway/firebase_options.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import './screens/bottom_navigation_screen.dart';
 import './screens/recording_screen.dart';
@@ -8,7 +11,12 @@ import './screens/path_overview_screen.dart';
 import './screens/directions_screen.dart';
 import './screens/start_trace_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  // var db = FirebaseFirestore.instance;
   runApp(const MyApp());
 }
 
