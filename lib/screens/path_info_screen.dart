@@ -1,4 +1,14 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
+import 'package:puffway/providers/pathway.dart';
+import 'package:uuid/uuid.dart';
+import 'package:path/path.dart';
+
+import '../providers/path.dart';
 
 class PathInfoScreen extends StatefulWidget {
   static const routeName = "/path-info";
@@ -14,6 +24,13 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
 
   final FocusNode _titleFocus = FocusNode();
   final FocusNode _descriptionFocus = FocusNode();
+
+  //formfields
+  final _titleController = TextEditingController();
+  final _descriptionController = TextEditingController();
+
+  //uuid
+  var uuid = Uuid();
 
   @override
   void initState() {
@@ -42,8 +59,49 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
     }
 
     _form.currentState?.save();
+    if (_descriptionController.text.toString().trim() != '') {
+      createFolder(uuid.v1());
+      Provider.of<PathwayItem>(this.context, listen: false).addPathwayTitleDesc(
+          _titleController.text,
+          _descriptionController.text,
+          Provider.of<PathItems>(this.context, listen: false).allPaths);
+    } else {
+      createFolder(uuid.v1());
+      Provider.of<PathwayItem>(this.context, listen: false).addPathwayTitle(
+          _titleController.text,
+          Provider.of<PathItems>(this.context, listen: false).allPaths);
+    }
+  }
 
-    //save path info
+  Future<void> createFolder(String uuid) async {
+    final folderName = uuid;
+    final Directory? appDocDir = await getExternalStorageDirectory();
+    final path = Directory("${appDocDir!.path}/$folderName");
+    var status = await Permission.storage.status;
+    if (!status.isGranted) {
+      await Permission.storage.request();
+    }
+    if ((path.existsSync())) {
+      saveImageToFolder(path.path);
+    } else {
+      path.createSync(recursive: true);
+      saveImageToFolder(
+          path.path); //return new created path with uuid as folder
+    }
+  }
+
+  Future<void> saveImageToFolder(String path) async {
+    List<Map<String, dynamic>> allPaths =
+        Provider.of<PathItems>(this.context, listen: false).allPaths;
+    allPaths.forEach((element) async {
+      if (element.containsKey('imageURL')) {
+        File imageOldFile = element['imageURL'];
+        File imageNewFile = await File("$path/${basename(imageOldFile.path)}")
+            .writeAsBytes((element['imageURL'] as File).readAsBytesSync());
+        imageOldFile.deleteSync(recursive: false);
+        element.update('imageURL', (value) => imageNewFile);
+      }
+    });
   }
 
   @override
@@ -62,6 +120,7 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
                 TextFormField(
                   cursorColor: Theme.of(context).primaryColor,
                   focusNode: _titleFocus,
+                  controller: _titleController,
                   decoration: InputDecoration(
                     labelText: "Path Title",
 
@@ -92,6 +151,7 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
                 const SizedBox(height: 30),
 
                 TextFormField(
+                  controller: _descriptionController,
                   minLines: 1,
                   maxLines: 2,
                   cursorColor: Theme.of(context).primaryColor,
@@ -115,15 +175,15 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
                     border: const OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.multiline,
-                  // validator: (value) {
-                  //   if (value!.isEmpty) {
-                  //     return "Please enter a description.";
-                  //   }
-                  //   if (value.length < 5) {
-                  //     return "At least 5 characters long.";
-                  //   }
-                  //   return null;
-                  // },
+                  validator: (value) {
+                    // if (value!.isEmpty) {
+                    //   return "Please enter a description.";
+                    // }
+                    if (value!.length < 5 && value.isNotEmpty) {
+                      return "At least 5 characters long.";
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 40),
                 ElevatedButton(

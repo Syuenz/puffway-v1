@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
+import 'package:provider/provider.dart';
 import 'package:puffway/screens/start_trace_screen.dart';
+import '../providers/path.dart';
 import '../widgets/all_directions_body.dart';
 
 class PathOverviewScreen extends StatelessWidget {
@@ -28,6 +30,7 @@ class PathOverviewScreen extends StatelessWidget {
     final routeArgs =
         ModalRoute.of(context)!.settings.arguments as Map<String, String>;
     final mediaQuery = MediaQuery.of(context).size;
+    final paths = Provider.of<PathItems>(context).allPaths;
 
     return Scaffold(
       appBar: AppBar(title: Text(routeArgs['title']!)),
@@ -89,12 +92,12 @@ class PathOverviewScreen extends StatelessWidget {
               height: 8,
             ),
             AllDirectionsBody(
-              directionsList: test,
+              // directionsList: paths,
               bgColor: Color.fromARGB(255, 255, 186, 229),
             ),
             const SizedBox(height: 20),
             FloatingActionButton(
-              heroTag: "startBtm",
+              heroTag: "startBtn",
               onPressed: () {
                 //open trace back page
                 Navigator.of(context).pushNamed(

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
 import 'package:puffway/widgets/path_info_item.dart';
+
+import '../providers/path.dart';
 
 class DirectionScreen extends StatelessWidget {
   static const routeName = "/directions";
@@ -29,6 +32,8 @@ class DirectionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context).size;
+    final paths = Provider.of<PathItems>(context).allPaths;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Directions')),
       body: ListView.separated(
@@ -59,7 +64,7 @@ class DirectionScreen extends StatelessWidget {
                   ),
                 ]));
           }
-          return PathInfoItem();
+          return PathInfoItem(path: paths[index]);
         },
         separatorBuilder: (context, index) {
           return const Divider(

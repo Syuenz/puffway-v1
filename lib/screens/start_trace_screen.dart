@@ -208,8 +208,8 @@ class TraceBottom extends StatelessWidget {
                 flex: 2,
               ),
               IconButton(
-                splashRadius: mediaQuery.width / 21,
-                iconSize: mediaQuery.width / 15,
+                splashRadius: 18,
+                iconSize: 27,
                 onPressed: () {},
                 icon: Icon(
                   Icons.restart_alt_rounded,
@@ -218,36 +218,47 @@ class TraceBottom extends StatelessWidget {
               Spacer(
                 flex: 1,
               ),
-              ClipOval(
-                child: Material(
-                  child: InkWell(
-                    onTap: () {},
-                    child: Center(
-                      child: Ink(
-                        decoration: ShapeDecoration(
-                          color: Theme.of(context).primaryColorDark,
-                          shape: CircleBorder(),
-                        ),
-                        child: IconButton(
-                          splashRadius: mediaQuery.width / 11,
-                          onPressed: () {},
-                          iconSize: mediaQuery.width / 8,
-                          icon: Icon(
-                            Icons.pause_rounded,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+              FloatingActionButton(
+                heroTag: "playbtn",
+                onPressed: () {},
+                backgroundColor: Theme.of(context).primaryColorDark,
+                child: const Icon(
+                  Icons.pause_rounded,
+                  size: 40,
                 ),
               ),
+              // ClipOval(
+              //   child: Material(
+              //     child: InkWell(
+              //       onTap: () {},
+              //       child: Center(
+              //         child: Ink(
+              //           decoration: ShapeDecoration(
+              //             color: Theme.of(context).primaryColorDark,
+              //             shape: CircleBorder(),
+              //           ),
+              //           child: IconButton(
+              //             splashRadius: mediaQuery.width / 11,
+              //             onPressed: () {},
+              //             iconSize: mediaQuery.width / 8,
+              //             icon: Icon(
+              //               Icons.pause_rounded,
+              //               color: Colors.white,
+              //             ),
+              //           ),
+              //         ),
+              //       ),
+              //     ),
+              //   ),
+              // ),
               Spacer(
                 flex: 1,
               ),
               IconButton(
-                splashRadius: mediaQuery.width / 21,
-                iconSize: mediaQuery.width / 15,
+                // splashRadius: mediaQuery.width / 21,
+                splashRadius: 18,
+                // iconSize: mediaQuery.width / 15,
+                iconSize: 27,
                 onPressed: () {},
                 icon: Icon(
                   Icons.volume_up_rounded,
@@ -267,14 +278,14 @@ class TraceBottom extends StatelessWidget {
                   child: InkWell(
                     onTap: () {},
                     child: Ink(
-                      height: mediaQuery.width / 10,
-                      width: mediaQuery.width / 10,
+                      height: 35,
+                      width: 35,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.black, width: 1.5),
                       ),
                       child: Icon(
-                        size: mediaQuery.width / 15,
+                        size: 25,
                         Icons.fork_right_rounded,
                       ),
                     ),

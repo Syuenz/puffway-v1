@@ -12,19 +12,17 @@ class ImageDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      child: Container(
-        child: AspectRatio(
-          aspectRatio: isHorizontal ? 4 / 3 : 3 / 4,
-          // child: Image.network(
-          //   "https://images.unsplash.com/photo-1609645778471-613f21fcf3df?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8Mnx8dmVydGljYWwlMjB3YWxscGFwZXJ8ZW58MHx8MHx8&w=1000&q=80",
-          //   fit: BoxFit.fill,
-          //   alignment: Alignment.center,
-          // ),
-          child: Image.file(
-            imageURL,
-            fit: BoxFit.contain,
-            width: MediaQuery.of(context).size.width,
-          ),
+      child: AspectRatio(
+        aspectRatio: isHorizontal ? 4 / 3 : 3 / 4,
+        // child: Image.network(
+        //   "https://images.unsplash.com/photo-1609645778471-613f21fcf3df?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8Mnx8dmVydGljYWwlMjB3YWxscGFwZXJ8ZW58MHx8MHx8&w=1000&q=80",
+        //   fit: BoxFit.fill,
+        //   alignment: Alignment.center,
+        // ),
+        child: Image.file(
+          imageURL,
+          fit: BoxFit.contain,
+          // width: MediaQuery.of(context).size.width,
         ),
       ),
     );
