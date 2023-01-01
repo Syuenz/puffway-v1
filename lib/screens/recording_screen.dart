@@ -10,6 +10,7 @@ import 'package:vector_math/vector_math_64.dart' hide Colors;
 import 'package:motion_sensors/motion_sensors.dart';
 
 import 'package:flutter/material.dart';
+import 'package:vibration/vibration.dart';
 import '../widgets/all_directions_body.dart';
 import '../widgets/customized_alert_dialog.dart';
 import '../widgets/path_info_item.dart';
@@ -51,6 +52,9 @@ class _RecordingScreenState extends State<RecordingScreen> {
   int lastMemoSteps = 0;
   var isMemoSaved = false;
 
+  //dialog bug
+  var isDialogShowing = false;
+
   @override
   void initState() {
     super.initState();
@@ -73,15 +77,16 @@ class _RecordingScreenState extends State<RecordingScreen> {
   void addPathsToGlobal(String direction) {
     //for continous turns
     if (steps > 0) {
-      PathItem prevPath = PathItem(direction: 0, steps: steps);
+      PathItem prevPath =
+          PathItem(direction: 0, steps: steps, timestamp: Timestamp.now());
       Provider.of<PathItems>(context, listen: false).addPath(prevPath);
     }
 
     if (direction == "left") {
-      PathItem turnPath = PathItem(direction: 1);
+      PathItem turnPath = PathItem(direction: 1, timestamp: Timestamp.now());
       Provider.of<PathItems>(context, listen: false).addPath(turnPath);
     } else if (direction == "right") {
-      PathItem turnPath = PathItem(direction: 2);
+      PathItem turnPath = PathItem(direction: 2, timestamp: Timestamp.now());
       Provider.of<PathItems>(context, listen: false).addPath(turnPath);
     }
     steps = 0;
@@ -123,46 +128,58 @@ class _RecordingScreenState extends State<RecordingScreen> {
         if (currentDegree.toStringAsFixed(0) == left.toStringAsFixed(0)) {
           _streamOrientationSubscription.cancel();
           _streamAccelerometerSubscription.cancel();
-          showDialog(
-              context: context,
-              builder: (BuildContext context) => CustomizedAlertDialog(
-                    content: "Turn Left?",
-                    yes: "Confirm",
-                    no: "Cancel",
-                    yesOnPressed: () {
-                      direction = 1; //left
-                      directionPointer = left;
-                      addPathsToGlobal("left");
-                      turningHandler();
-                      Navigator.of(context).pop();
-                    },
-                    noOnPressed: () {
-                      turningHandler();
-                      Navigator.of(context).pop();
-                    },
-                  ));
+          if (!isDialogShowing) {
+            isDialogShowing = true;
+            Vibration.vibrate();
+            showDialog(
+                context: context,
+                builder: (BuildContext context) => CustomizedAlertDialog(
+                      content: "Turn Left?",
+                      yes: "Confirm",
+                      no: "Cancel",
+                      yesOnPressed: () {
+                        direction = 1; //left
+                        directionPointer = left;
+                        addPathsToGlobal("left");
+                        turningHandler();
+
+                        Navigator.of(context).pop();
+                      },
+                      noOnPressed: () {
+                        turningHandler();
+
+                        Navigator.of(context).pop();
+                      },
+                    )).then((value) {
+              turningHandler();
+            });
+          }
         } else if (currentDegree.toStringAsFixed(0) ==
             right.toStringAsFixed(0)) {
           _streamOrientationSubscription.cancel();
           _streamAccelerometerSubscription.cancel();
-          showDialog(
-              context: context,
-              builder: (BuildContext context) => CustomizedAlertDialog(
-                    content: "Turn Right?",
-                    yes: "Confirm",
-                    no: "Cancel",
-                    yesOnPressed: () {
-                      direction = 2; //right
-                      directionPointer = right;
-                      addPathsToGlobal("right");
-                      turningHandler();
-                      Navigator.of(context).pop();
-                    },
-                    noOnPressed: () {
-                      turningHandler();
-                      Navigator.of(context).pop();
-                    },
-                  ));
+          if (!isDialogShowing) {
+            isDialogShowing = true;
+            Vibration.vibrate();
+            showDialog(
+                context: context,
+                builder: (BuildContext context) => CustomizedAlertDialog(
+                      content: "Turn Right?",
+                      yes: "Confirm",
+                      no: "Cancel",
+                      yesOnPressed: () {
+                        direction = 2; //right
+                        directionPointer = right;
+                        addPathsToGlobal("right");
+                        turningHandler();
+                        Navigator.of(context).pop();
+                      },
+                      noOnPressed: () {
+                        turningHandler();
+                        Navigator.of(context).pop();
+                      },
+                    )).then((value) => {turningHandler()});
+          }
         } else {
           direction = 0; //straight
         }
@@ -176,9 +193,7 @@ class _RecordingScreenState extends State<RecordingScreen> {
       exactDistance = calculateMagnitude(event.x, event.y, event.z);
       magnitudeDelta = exactDistance - previousMagnitude;
       previousMagnitude = exactDistance;
-
       setState(() {
-        // _accelerometer.setValues(event.x, event.y, event.z);
         if (magnitudeDelta > 3) {
           if (initial == false) {
             steps++;
@@ -207,6 +222,7 @@ class _RecordingScreenState extends State<RecordingScreen> {
 
   void turningHandler() {
     refreshDegrees = true; //to set the directionPointer to new degree
+    isDialogShowing = false;
     directionHandler();
     footstepsHandler();
   }
@@ -226,33 +242,39 @@ class _RecordingScreenState extends State<RecordingScreen> {
     return true;
   }
 
+  void resetSteps() {
+    setState(() {
+      steps = 0;
+    });
+  }
+
   Future<bool> showDiscardDialog() async {
-    return await showDialog(
-            //the return value will be from "Yes" or "No" options
-            context: context,
-            builder: (BuildContext context) => CustomizedAlertDialog(
-                  content: "Discard Recording?",
-                  yes: "Confirm",
-                  no: "Cancel",
-                  yesOnPressed: () {
-                    //not needed as when pathway is added path list should be cleared
-                    Provider.of<PathItems>(context, listen: false)
-                        .clearAllPath();
-                    Navigator.popUntil(context, ModalRoute.withName('/'));
-                  },
-                  noOnPressed: () {
-                    Navigator.pop(context);
-                  },
-                )) ??
-        false; //if showDialouge had returned null, then return false
+    sensorsHandler(true);
+    showDialog(
+        context: context,
+        builder: (BuildContext context) => CustomizedAlertDialog(
+              content: "Discard Recording?",
+              yes: "Confirm",
+              no: "Cancel",
+              yesOnPressed: () {
+                Provider.of<PathItems>(context, listen: false).clearAllPath();
+                Navigator.popUntil(context, ModalRoute.withName('/'));
+              },
+              noOnPressed: () {
+                sensorsHandler(false);
+                Navigator.pop(context);
+              },
+            ));
+    return false;
   }
 
   Future<void> deleteImageFromApp() async {
-    List<Map<String, dynamic>> allPaths =
-        Provider.of<PathItems>(this.context, listen: false).allPaths;
+    List<PathItem> allPaths =
+        Provider.of<PathItems>(context, listen: false).allPaths;
+
     allPaths.forEach((element) async {
-      if (element.containsKey('imageURL')) {
-        File imageOldFile = element['imageURL'];
+      if (element.imageURL != null) {
+        File imageOldFile = File(element.imageURL!);
         imageOldFile.deleteSync(recursive: false);
       }
     });
@@ -261,6 +283,7 @@ class _RecordingScreenState extends State<RecordingScreen> {
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
+    final paths = Provider.of<PathItems>(context).allPaths;
 
     return WillPopScope(
       onWillPop: showDiscardDialog,
@@ -318,17 +341,50 @@ class _RecordingScreenState extends State<RecordingScreen> {
                   style: TextStyle(fontSize: 16 / 720 * mediaQuery.size.height),
                 ),
                 const SizedBox(height: 15),
-                AllDirectionsBody(
-                    // directionsList: paths,
-                    bgColor: Color.fromARGB(255, 255, 186, 229)),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      decoration: BoxDecoration(
+                          color: Color.fromARGB(255, 255, 186, 229),
+                          borderRadius: BorderRadius.circular(20)),
+                      child: Consumer<PathItems>(
+                        builder: (ctx, path, _) => ListView.builder(
+                            padding: EdgeInsets.only(top: 10, bottom: 10),
+                            scrollDirection: Axis.vertical,
+                            itemCount: paths.length,
+                            itemBuilder: (BuildContext ctx, index) {
+                              return Card(
+                                elevation: 6,
+                                margin: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                  horizontal: 20,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: PathInfoItem(
+                                  path: paths[index],
+                                ),
+                              );
+                            }),
+                      ),
+                    ),
+                  ),
+                ),
+                // AllDirectionsBody(
+                //     directionsList: paths,
+                //     bgColor: Color.fromARGB(255, 255, 186, 229)),
                 const SizedBox(height: 20),
                 RecordingBottom(
                   sensorsHandler: sensorsHandler,
                   isMemoEnabled: memoButtonHandler(),
                   memoSavedHandler: memoSavedHandler,
-                  // context: context,
                   deleteImageFromApp: deleteImageFromApp,
+                  showDiscardDialog: showDiscardDialog,
                   steps: steps,
+                  paths: paths,
+                  resetSteps: resetSteps,
                 )
               ],
             )),
@@ -346,28 +402,21 @@ class RecordingBottom extends StatelessWidget {
       required this.isMemoEnabled,
       required this.memoSavedHandler,
       required this.deleteImageFromApp,
+      required this.showDiscardDialog,
       // required this.context,
-      required this.steps})
+      required this.steps,
+      required this.paths,
+      required this.resetSteps})
       : super(key: key);
 
   Function sensorsHandler;
   Function memoSavedHandler;
   Function deleteImageFromApp;
+  Function showDiscardDialog;
   bool isMemoEnabled;
+  List<PathItem> paths;
   var steps;
-
-  // Future<void> deleteImageFromApp() async {
-  //   print("run?");
-  //   List<Map<String, dynamic>> allPaths =
-  //       Provider.of<PathItems>(this.context, listen: false).allPaths;
-  //   allPaths.forEach((element) async {
-  //     if (element.containsKey('imageURL')) {
-  //       print("run?");
-  //       File imageOldFile = element['imageURL'];
-  //       await imageOldFile.delete(recursive: false);
-  //     }
-  //   });
-  // }
+  Function resetSteps;
 
   @override
   Widget build(BuildContext context) {
@@ -378,7 +427,7 @@ class RecordingBottom extends StatelessWidget {
           heroTag: "cancelbtn",
           onPressed: () async {
             deleteImageFromApp();
-            Navigator.of(context).pop();
+            showDiscardDialog();
           },
           backgroundColor: Colors.red,
           child: const Icon(Icons.clear),
@@ -421,13 +470,45 @@ class RecordingBottom extends StatelessWidget {
           heroTag: "savebtn",
           onPressed: () {
             sensorsHandler(true);
-            Navigator.of(context)
-                .pushNamed(PathInfoScreen.routeName)
-                .then((value) {
-              sensorsHandler(false);
-            });
+            if (paths.isNotEmpty && steps == 0) {
+              Navigator.of(context)
+                  .pushNamed(PathInfoScreen.routeName)
+                  .then((value) {
+                sensorsHandler(false);
+              });
+            } else if (paths.isNotEmpty && steps > 0) {
+              PathItem straightPath = PathItem(
+                  direction: 0, timestamp: Timestamp.now(), steps: steps);
+              Provider.of<PathItems>(context, listen: false)
+                  .addPath(straightPath);
+              resetSteps();
+              Navigator.of(context)
+                  .pushNamed(PathInfoScreen.routeName)
+                  .then((value) {
+                sensorsHandler(false);
+              });
+            } else {
+              showDialog(
+                  context: context,
+                  builder: (BuildContext context) => AlertDialog(
+                        content: const Text(
+                            "No paths are recorded. Please try again"),
+                        actions: <Widget>[
+                          TextButton(
+                            style: TextButton.styleFrom(
+                                foregroundColor:
+                                    Theme.of(context).primaryColor),
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              sensorsHandler(false);
+                            },
+                            child: const Text('Okay'),
+                          ),
+                        ],
+                      ));
+            }
           },
-          backgroundColor: Colors.green,
+          backgroundColor: paths.isNotEmpty ? Colors.green : Colors.grey,
           child: const Icon(Icons.check),
         ),
       ],

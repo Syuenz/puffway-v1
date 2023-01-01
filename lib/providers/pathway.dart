@@ -1,79 +1,85 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
+import 'package:path/path.dart';
 import 'package:platform_device_id/platform_device_id.dart';
+import 'package:provider/provider.dart';
+import 'package:puffway/providers/path.dart';
 
 class Pathway {
-  // final String? id;
-  final Timestamp timestamp;
-  final String title;
-  final String? description;
-  final String? deviceID;
-  final List<Map<String, dynamic>> paths;
+  Timestamp timestamp;
+  String title;
+  String? description;
+  String? imageDocPath;
+  List<PathItem>? paths;
 
   Pathway(
-      {
-      // this.id,
-      required this.timestamp,
+      {required this.timestamp,
       required this.title,
       this.description,
-      required this.paths,
-      this.deviceID});
+      this.imageDocPath,
+      this.paths});
 
-  Map<String, dynamic> toMap() {
+  factory Pathway.fromFirestore(DocumentSnapshot<Map<String, dynamic>> snapshot,
+      SnapshotOptions? options) {
+    final data = snapshot.data();
+    return Pathway(
+        timestamp: data?['timestamp'],
+        title: data?['title'],
+        description: data?['description'],
+        imageDocPath: data?['imageDocPath'],
+        paths: data?['paths'] is Iterable
+            ? List.from((data?['paths'] as List)
+                .map((data) => PathItem(
+                    direction: data?['direction'],
+                    steps: data?['steps'],
+                    imageURL: data?['imageURL'],
+                    isHorizontal: data?['isHorizontal'],
+                    textMemo: data?['textMemo'],
+                    timestamp: data?['timestamp']))
+                .toList())
+            : null);
+  }
+
+  Map<String, dynamic> ToFirestore() {
     return {
       'timestamp': timestamp,
       'title': title,
-      'description': description,
-      // 'paths': paths
+      if (description != null) 'description': description,
+      if (imageDocPath != null) 'imageDocPath': imageDocPath,
+      'paths': paths
+          ?.map((data) => {
+                'direction': data.direction,
+                'steps': data.steps,
+                if (data.imageURL != null) 'imageURL': data.imageURL,
+                if (data.isHorizontal != null)
+                  'isHorizontal': data.isHorizontal,
+                if (data.textMemo != null) 'textMemo': data.textMemo,
+                'timestamp': data.timestamp
+              })
+          .toList()
     };
   }
 }
 
-class PathwayItem with ChangeNotifier {
-  List<Map<String, dynamic>> pathways = [];
+// class PathwayItem with ChangeNotifier {
+//   List<Pathway> pathways = [];
 
-  void addPathwayTitleDesc(
-      String title, String description, List<Map<String, dynamic>> paths) {
-    Pathway newPathway = Pathway(
-      timestamp: Timestamp.now(), //firestore timestamp
-      title: title,
-      description: description,
-      paths: paths,
-    );
-    // addToFirestore(newPathway);
-    notifyListeners();
-  }
+//   List<Pathway> get allPathways {
+//     return [...pathways];
+//   }
+// }
 
-  void addPathwayTitle(String title, List<Map<String, dynamic>> paths) {
-    Pathway newPathway = Pathway(
-      timestamp: Timestamp.now(), //firestore timestamp
-      title: title,
-      paths: paths,
-    );
-    // addToFirestore(newPathway);
-    notifyListeners();
-  }
+// class PathwayItems {
+//   List<Pathway> pathways = [];
 
-  void addToFirestore(Pathway newPathway) {
-    String? deviceId;
-    var db = FirebaseFirestore.instance;
+//   List<Pathway> get allPathways {
+//     return [...pathways];
+//   }
 
-    Future<void> initPlatformState() async {
-      // Platform messages may fail, so we use a try/catch PlatformException.
-      try {
-        deviceId = await PlatformDeviceId.getDeviceId;
-      } on PlatformException {
-        deviceId = 'Failed to get deviceId.';
-      }
-    }
-
-    //add new pathway to firestore
-    db.collection(deviceId!).add(newPathway.toMap()).then((documentSnapshot) =>
-        print("Added Data with ID: ${documentSnapshot.id}"));
-  }
-
-  List<Map<String, dynamic>> get allPathways {
-    return [...pathways];
-  }
-}
+//   set allPathways(List<Pathway> firestorePathways) {
+//     pathways = firestorePathways;
+//   }
+// }

@@ -1,7 +1,22 @@
+import 'dart:async';
+import 'dart:io';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
+import 'package:motion_sensors/motion_sensors.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import 'package:card_swiper/card_swiper.dart';
+import 'package:provider/provider.dart';
+import 'package:puffway/providers/path.dart';
+import 'package:puffway/screens/path_overview_screen.dart';
+import 'package:vector_math/vector_math_64.dart' hide Colors;
+import 'package:vibration/vibration.dart';
+
+import '../screens/directions_screen.dart';
+import '../providers/pathway.dart';
+import '../widgets/customized_alert_dialog.dart';
 
 class StartTraceScreen extends StatefulWidget {
   static const routeName = "/start-trace";
@@ -13,54 +28,401 @@ class StartTraceScreen extends StatefulWidget {
 }
 
 class _StartTraceScreenState extends State<StartTraceScreen> {
+  //lists for progress
+  List<PathItem> paths = [];
+  List<PathItem> pastPaths = [];
+  late List<PathItem> upcomingPaths;
+  List<PathItem> execPaths = [];
+
+  //path for display
+  PathItem? currentPath;
+  PathItem? nextPath;
+  int ongoingSteps = 0;
+  int currentTurns = 0;
+  int previousTotalSteps = 0;
+  int totalSteps = 0;
+  int totalTurns = 0;
+  SwiperController controller = SwiperController();
+
+  //sensors
+  final Vector3 _orientation = Vector3.zero();
+  late StreamSubscription<dynamic> _streamAccelerometerSubscription;
+  late StreamSubscription<dynamic> _streamOrientationSubscription;
+
+  //footsteps
+  double exactDistance = 0.0;
+  double previousMagnitude = 0.0;
+  double magnitudeDelta = 0.0;
+  var initial = true;
+
+  //direction
+  double directionPointer = 0.0;
+  double currentDegree = 0.0;
+  double left = 0.0;
+  double right = 0.0;
+  int direction = 0;
+  var refreshDegrees = false;
+
+  var isDialogShowing = false;
+  var isPause = false;
+  var isEnd = false; //for play button
+
+  List<Map<int, PathItem>> memoPaths = [];
+
+  @override
+  void initState() {
+    super.initState();
+    footstepsHandler();
+    directionHandler();
+    motionSensors.accelerometerUpdateInterval =
+        Duration.microsecondsPerSecond ~/ 1;
+    motionSensors.orientationUpdateInterval =
+        Duration.microsecondsPerSecond ~/ 1;
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _streamOrientationSubscription.cancel();
+    _streamAccelerometerSubscription.cancel();
+  }
+
+  Future<void> footstepsHandler() async {
+    _streamAccelerometerSubscription =
+        motionSensors.accelerometer.listen((AccelerometerEvent event) {
+      exactDistance = calculateMagnitude(event.x, event.y, event.z);
+      magnitudeDelta = exactDistance - previousMagnitude;
+      previousMagnitude = exactDistance;
+
+      setState(() {
+        if (magnitudeDelta > 3) {
+          if (initial == false) {
+            ongoingSteps++;
+            if (memoPaths.isNotEmpty) {
+              memoSwipeHandler();
+            }
+
+            // if (ongoingSteps == totalSteps) {
+            //   currentPath = null;
+            //   PathItem pathToRemoved = upcomingPaths.first;
+            //   pastPaths.add(pathToRemoved);
+            //   upcomingPaths.removeAt(0);
+            //   execPaths.add(currentPath!);
+            //   previousTotalSteps = calPreviousTotalSteps();
+            // }
+            if (upcomingPaths.isNotEmpty) {
+              pathHandler();
+            }
+          } else {
+            initial = false;
+            upcomingPaths = [...paths.reversed];
+            currentPath = upcomingPaths.elementAt(0);
+            nextPath = upcomingPaths.elementAt(1);
+            execPaths.add(currentPath!);
+            previousTotalSteps = calPreviousTotalSteps();
+          }
+        }
+      });
+    });
+  }
+
+  double calculateMagnitude(double x, double y, double z) {
+    double distance = sqrt(x * x + y * y + z * z);
+    return distance;
+  }
+
+  int calPreviousTotalSteps() {
+    var total = execPaths.fold(0, (sum, element) => sum + element.steps);
+    return total;
+  }
+
+  void pathHandler() {
+    PathItem pathToRemoved;
+    if (previousTotalSteps == ongoingSteps) {
+      setState(() {
+        if (upcomingPaths.length > 2) {
+          pathToRemoved = upcomingPaths.first;
+          pastPaths.add(pathToRemoved);
+          upcomingPaths.removeAt(0);
+          currentPath = upcomingPaths.elementAt(0);
+          nextPath = upcomingPaths.elementAt(1);
+          execPaths.add(currentPath!);
+          previousTotalSteps = calPreviousTotalSteps();
+        } else if (upcomingPaths.length == 2) {
+          pathToRemoved = upcomingPaths.first;
+          pastPaths.add(pathToRemoved);
+          upcomingPaths.removeAt(0);
+          currentPath = upcomingPaths.elementAt(0);
+          nextPath = null;
+          execPaths.add(currentPath!);
+          previousTotalSteps = calPreviousTotalSteps();
+        }
+        // else if (upcomingPaths.length == 1) {
+        //   pathToRemoved = upcomingPaths.first;
+        //   pastPaths.add(pathToRemoved);
+        //   upcomingPaths.removeAt(0);
+        //   currentPath = pathToRemoved;
+        //   nextPath = null;
+        //   execPaths.add(currentPath!);
+        //   previousTotalSteps = calPreviousTotalSteps();
+        // }
+      });
+    }
+  }
+
+  void memoSwipeHandler() {
+    List keys = [];
+    memoPaths.asMap().forEach((index, value) => keys.add(value.keys.first));
+
+    if (keys.sublist(1).contains(ongoingSteps)) {
+      controller.move(keys.indexOf(ongoingSteps));
+    }
+  }
+
+  Future<void> directionHandler() async {
+    _streamOrientationSubscription =
+        motionSensors.orientation.listen((OrientationEvent event) {
+      setState(() {
+        _orientation.setValues(event.yaw, event.pitch, event.roll);
+        if (initial || refreshDegrees) {
+          directionPointer = 360 - degrees(_orientation.x) % 360;
+          refreshDegrees = false;
+        }
+        currentDegree = 360 - degrees(_orientation.x) % 360;
+
+        if (directionPointer < 39) {
+          left = directionPointer - 40 + 360;
+          right = directionPointer + 40;
+        } else if (directionPointer > 319) {
+          left = directionPointer - 40;
+          right = directionPointer + 40 - 360;
+        } else {
+          left = directionPointer - 40;
+          right = directionPointer + 40;
+        }
+
+        if (currentPath?.direction == 2) {
+          if (currentDegree.toStringAsFixed(0) == right.toStringAsFixed(0)) {
+            sensorsHandler(true);
+            if (!isDialogShowing) {
+              isDialogShowing = true;
+              Vibration.vibrate();
+              showDialog(
+                context: context,
+                builder: (BuildContext context) => AlertDialog(
+                  content: const Text('Please TURN LEFT.'),
+                  actions: <Widget>[
+                    TextButton(
+                      style: TextButton.styleFrom(
+                          foregroundColor: Theme.of(context).primaryColor),
+                      onPressed: () {
+                        refreshDegrees = true;
+                        isDialogShowing = false;
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('Okay'),
+                    ),
+                  ],
+                ),
+              ).then((value) {
+                turningHandler();
+              });
+            }
+          } else if (currentDegree.toStringAsFixed(0) ==
+              left.toStringAsFixed(0)) {
+            setState(() {
+              currentTurns++;
+              ongoingSteps++;
+              pathHandler();
+              refreshDegrees = true;
+            });
+          }
+        } else if (currentPath?.direction == 1) {
+          if (currentDegree.toStringAsFixed(0) == left.toStringAsFixed(0)) {
+            sensorsHandler(true);
+            Vibration.vibrate();
+            if (!isDialogShowing) {
+              showDialog(
+                context: context,
+                builder: (BuildContext context) => AlertDialog(
+                  content: const Text('Please TURN RIGHT.'),
+                  actions: <Widget>[
+                    TextButton(
+                      style: TextButton.styleFrom(
+                          foregroundColor: Theme.of(context).primaryColor),
+                      onPressed: () {
+                        refreshDegrees = true;
+                        isDialogShowing = false;
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('Okay'),
+                    ),
+                  ],
+                ),
+              ).then((value) {
+                turningHandler();
+              });
+            }
+          } else if (currentDegree.toStringAsFixed(0) ==
+              right.toStringAsFixed(0)) {
+            setState(() {
+              currentTurns++;
+              ongoingSteps++;
+              pathHandler();
+              refreshDegrees = true;
+            });
+          }
+        }
+
+        if (ongoingSteps == totalSteps && currentTurns == totalTurns) {
+          currentPath = null;
+          PathItem pathToRemoved = upcomingPaths.first;
+          pastPaths.add(pathToRemoved);
+          upcomingPaths.removeAt(0);
+          execPaths.add(currentPath!);
+          previousTotalSteps = calPreviousTotalSteps();
+          playBtnHandler(true);
+          isEnd = true;
+        } else if (ongoingSteps == totalSteps) {
+          playBtnHandler(true);
+          isEnd = true;
+        }
+      });
+    });
+  }
+
+  void sensorsHandler(bool isPause) {
+    if (isPause) {
+      _streamAccelerometerSubscription.cancel();
+      _streamOrientationSubscription.cancel();
+    } else {
+      directionHandler();
+      footstepsHandler();
+    }
+  }
+
+  void turningHandler() {
+    refreshDegrees = true; //to set the directionPointer to new degree
+    isDialogShowing = false;
+    directionHandler();
+    footstepsHandler();
+  }
+
+  void playBtnHandler(bool isPause) {
+    setState(() {
+      this.isPause = isPause;
+      sensorsHandler(isPause);
+    });
+  }
+
+  Future<bool> showDiscardDialog() async {
+    sensorsHandler(true);
+    showDialog(
+        context: context,
+        builder: (BuildContext context) => CustomizedAlertDialog(
+              content: "Discard Backtracking?",
+              yes: "Confirm",
+              no: "Cancel",
+              yesOnPressed: () {
+                Navigator.popUntil(
+                    context, ModalRoute.withName(PathOverviewScreen.routeName));
+              },
+              noOnPressed: () {
+                sensorsHandler(false);
+                Navigator.pop(context);
+              },
+            ));
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final routeArgs =
+        ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+    Pathway data = routeArgs['data'];
+    paths = data.paths!;
+
+    totalSteps = routeArgs['totalSteps'];
+    totalTurns = routeArgs['totalTurns'];
+    memoPaths = routeArgs['memoPaths'];
     final mediaQuery = MediaQuery.of(context).size;
 
-    return Scaffold(
-        appBar: AppBar(title: const Text('Path Title')),
-        body: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              LinearPercentIndicator(
-                padding: EdgeInsets.all(0),
-                animation: true,
-                lineHeight: 11,
-                animationDuration: 2000,
-                percent: 0.9,
-                center: Text(
-                  "90.0%",
-                  style: TextStyle(
-                      fontSize: 9 / 720 * mediaQuery.height,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600),
+    return WillPopScope(
+      onWillPop: showDiscardDialog,
+      child: Scaffold(
+          appBar: AppBar(title: Text(data.title)),
+          body: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                LinearPercentIndicator(
+                  padding: const EdgeInsets.all(0),
+                  lineHeight: 15,
+                  percent: ongoingSteps / totalSteps,
+                  center: Text(
+                    "${(ongoingSteps / totalSteps * 100).toStringAsFixed(0)}%",
+                    style: TextStyle(
+                        fontSize: 9 / 720 * mediaQuery.height,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600),
+                  ),
+                  barRadius: Radius.circular(16),
+                  // progressColor: Theme.of(context).primaryColorDark,
+                  progressColor: Color.fromARGB(255, 43, 175, 40),
                 ),
-                barRadius: Radius.circular(16),
-                // progressColor: Theme.of(context).primaryColorDark,
-                progressColor: Color.fromARGB(255, 43, 175, 40),
-              ),
-              SizedBox(
-                height: 10,
-              ),
-              CurrentDirection(mediaQuery: mediaQuery),
-              PathDetails(mediaQuery: mediaQuery),
-              TraceBody(mediaQuery: mediaQuery),
-              TraceBottom(mediaQuery: mediaQuery)
-            ],
-          ),
-        ));
+                const SizedBox(
+                  height: 10,
+                ),
+                CurrentDirection(
+                  mediaQuery: mediaQuery,
+                  currentPath: currentPath,
+                  nextPath: nextPath,
+                  stepsToGo: previousTotalSteps - ongoingSteps,
+                ),
+                PathDetails(
+                  mediaQuery: mediaQuery,
+                  nextPath: nextPath,
+                  totalSteps: totalSteps,
+                  totalTurns: totalTurns,
+                  ongoingSteps: ongoingSteps,
+                  currentTurns: currentTurns,
+                ),
+                TraceBody(
+                  mediaQuery: mediaQuery,
+                  memoPaths: memoPaths,
+                  totalSteps: totalSteps,
+                  controller: controller,
+                ),
+                TraceBottom(
+                  mediaQuery: mediaQuery,
+                  paths: paths,
+                  pastPaths: pastPaths,
+                  sensorsHandler: sensorsHandler,
+                  isPause: isPause,
+                  playBtnHandler: playBtnHandler,
+                  isEnd: isEnd,
+                )
+              ],
+            ),
+          )),
+    );
   }
 }
 
 class TraceBody extends StatelessWidget {
-  const TraceBody({
-    Key? key,
-    required this.mediaQuery,
-  }) : super(key: key);
+  TraceBody(
+      {Key? key,
+      required this.mediaQuery,
+      required this.memoPaths,
+      required this.totalSteps,
+      required this.controller})
+      : super(key: key);
 
   final Size mediaQuery;
+  List<Map<int, PathItem>> memoPaths;
+  int totalSteps;
+  SwiperController controller;
 
   @override
   Widget build(BuildContext context) {
@@ -73,330 +435,317 @@ class TraceBody extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Container(
-              child: Swiper(
-                outer: true,
-                itemBuilder: (BuildContext context, int index) {
-                  return Container(
-                      padding: EdgeInsets.only(top: 10, left: 20, right: 20),
-                      decoration: BoxDecoration(
-                        // border: Border.all(color: Colors.red),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            "30%",
-                            style: TextStyle(
-                                fontSize: 15,
-                                color: Theme.of(context).primaryColor,
-                                fontWeight: FontWeight.w600),
-                          ),
-                          SizedBox(
-                            height: 5,
-                          ),
-                          Expanded(
-                            // height: 150,
-                            // width: 150,
-                            // height: mediaQuery.height / 4,
-                            // width: mediaQuery.width / 3,
-                            child: Image.network(
-                              "https://images.pexels.com/photos/775201/pexels-photo-775201.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500",
-                              fit: BoxFit.fill,
+            child: memoPaths.isNotEmpty
+                ? Container(
+                    child: Swiper(
+                      physics: const BouncingScrollPhysics(),
+                      loop: false,
+                      outer: true,
+                      controller: controller,
+                      itemBuilder: (BuildContext context, int index) {
+                        return Container(
+                            padding: const EdgeInsets.only(
+                                top: 10, left: 20, right: 20),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
                             ),
-                          ),
-                          SizedBox(
-                            height: 10,
-                          ),
-                          Container(
-                              height: mediaQuery.height / 10,
-                              padding: EdgeInsets.symmetric(horizontal: 11),
-                              decoration: BoxDecoration(
-                                // borderRadius:
-                                //     BorderRadius.circular(15),
-                                border: Border.all(
-                                  color: Colors.grey,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  "${(memoPaths[index].keys.first / totalSteps * 100).toStringAsFixed(0)}%",
+                                  style: TextStyle(
+                                      fontSize: 15,
+                                      color: Theme.of(context).primaryColor,
+                                      fontWeight: FontWeight.w600,
+                                      height: 1.5),
                                 ),
-                              ),
-                              child: SingleChildScrollView(
-                                child: Container(
-                                  padding: EdgeInsets.symmetric(vertical: 4),
-                                  child: Text(
-                                    "1 Description that is too long in text format(Here Data is coming from API) jdlksaf j klkjjflkdsjfkddfdfsdfds " +
-                                        "2 Description that is too long in text format(Here Data is coming from API) d fsdfdsfsdfd dfdsfdsf sdfdsfsd d " +
-                                        "3 Description that is too long in text format(Here Data is coming from API)  adfsfdsfdfsdfdsf   dsf dfd fds fs" +
-                                        "4 Description that is too long in text format(Here Data is coming from API) dsaf dsafdfdfsd dfdsfsda fdas dsad" +
-                                        "5 Description that is too long in text format(Here Data is coming from API) dsfdsfd fdsfds fds fdsf dsfds fds " +
-                                        "6 Description that is too long in text format(Here Data is coming from API) asdfsdfdsf fsdf sdfsdfdsf sd dfdsf" +
-                                        "7 Description that is too long in text format(Here Data is coming from API) df dsfdsfdsfdsfds df dsfds fds fsd" +
-                                        "8 Description that is too long in text format(Here Data is coming from API)" +
-                                        "9 Description that is too long in text format(Here Data is coming from API)" +
-                                        "10 Description that is too long in text format(Here Data is coming from API)",
-                                    style: TextStyle(fontSize: 16, height: 1.2),
+                                const SizedBox(
+                                  height: 5,
+                                ),
+                                if (memoPaths[index].values.first.imageURL !=
+                                    null)
+                                  Expanded(
+                                    child: SizedBox(
+                                      width: memoPaths[index]
+                                              .values
+                                              .first
+                                              .isHorizontal!
+                                          ? mediaQuery.height / 3
+                                          : null,
+                                      child: Image.file(
+                                        File(memoPaths[index]
+                                            .values
+                                            .first
+                                            .imageURL!),
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
                                   ),
+                                SizedBox(
+                                  height:
+                                      memoPaths[index].values.first.imageURL !=
+                                              null
+                                          ? 10
+                                          : 5,
                                 ),
-                              )),
-                        ],
-                      ));
-                },
-                itemCount: 3,
-                pagination: SwiperPagination(
-                    alignment: Alignment.bottomCenter,
-                    margin: EdgeInsets.all(8),
-                    builder: FractionPaginationBuilder(
-                        activeFontSize: 22, fontSize: 15, color: Colors.black)),
-                // pagination: SwiperCustomPagination(builder:
-                //     (BuildContext context,
-                //         SwiperPluginConfig config) {
-                //   return Align(
-                //     alignment: Alignment.bottomCenter,
-                //     child: Container(
-                //       margin: EdgeInsets.all(10),
-                //       child: Row(
-                //         // key: key,
-                //         // textBaseline: TextBaseline.alphabetic,
-                //         // crossAxisAlignment: CrossAxisAlignment.baseline,
-                //         mainAxisSize: MainAxisSize.min,
-
-                //         children: <Widget>[
-                //           Text(
-                //             '${config.activeIndex + 1}',
-                //             style: TextStyle(
-                //                 color: Theme.of(context).primaryColor,
-                //                 fontSize: 22,
-                //                 fontWeight: FontWeight.w600),
-                //           ),
-                //           Text(
-                //             ' / ${config.itemCount}',
-                //             style: TextStyle(
-                //                 color: Colors.black,
-                //                 fontSize: 15,
-                //                 fontWeight: FontWeight.w600),
-                //           )
-                //         ],
-                //       ),
-                //     ),
-                //   );
-                //   ;
-                // }),
-                control: SwiperControl(),
-              ),
-            )));
+                                if (memoPaths[index].values.first.textMemo !=
+                                    null)
+                                  Container(
+                                      height: memoPaths[index]
+                                                  .values
+                                                  .first
+                                                  .imageURL !=
+                                              null
+                                          ? mediaQuery.height / 10
+                                          : mediaQuery.height / 5,
+                                      width: double.infinity,
+                                      margin: const EdgeInsets.symmetric(
+                                          horizontal: 10),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 11),
+                                      decoration: BoxDecoration(
+                                        // borderRadius:
+                                        //     BorderRadius.circular(15),
+                                        border: Border.all(
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                      child: SingleChildScrollView(
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 4),
+                                          child: Text(
+                                            memoPaths[index]
+                                                .values
+                                                .first
+                                                .textMemo!,
+                                            style: TextStyle(
+                                                fontSize: 16, height: 1.2),
+                                          ),
+                                        ),
+                                      )),
+                              ],
+                            ));
+                      },
+                      itemCount: memoPaths.length,
+                      pagination: const SwiperPagination(
+                          alignment: Alignment.bottomCenter,
+                          margin: EdgeInsets.all(8),
+                          builder: FractionPaginationBuilder(
+                              activeFontSize: 22,
+                              fontSize: 15,
+                              color: Colors.black)),
+                      control: const SwiperControl(
+                          iconPrevious: Icons.arrow_back_ios_new,
+                          padding: EdgeInsets.all(0)),
+                    ),
+                  )
+                : Container(
+                    width: double.infinity,
+                    height: double.infinity,
+                    alignment: Alignment.center,
+                    child: const Text(
+                      "No Memos Available",
+                      style:
+                          TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
+                    ),
+                  )));
   }
 }
 
 class TraceBottom extends StatelessWidget {
-  const TraceBottom({
-    Key? key,
-    required this.mediaQuery,
-  }) : super(key: key);
+  TraceBottom(
+      {Key? key,
+      required this.mediaQuery,
+      required this.paths,
+      required this.pastPaths,
+      required this.sensorsHandler,
+      required this.playBtnHandler,
+      required this.isPause,
+      required this.isEnd})
+      : super(key: key);
 
   final Size mediaQuery;
+  List<PathItem> paths;
+  List<PathItem> pastPaths;
+  Function sensorsHandler;
+  Function playBtnHandler;
+  bool isPause;
+  bool isEnd;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: 10),
-      child: Row(
-        children: [
-          Flexible(flex: 1, child: Container()),
-          Flexible(
-            flex: 2,
-            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Spacer(
-                flex: 2,
-              ),
-              IconButton(
-                splashRadius: 18,
-                iconSize: 27,
-                onPressed: () {},
-                icon: Icon(
-                  Icons.restart_alt_rounded,
-                ),
-              ),
-              Spacer(
-                flex: 1,
-              ),
-              FloatingActionButton(
-                heroTag: "playbtn",
-                onPressed: () {},
-                backgroundColor: Theme.of(context).primaryColorDark,
-                child: const Icon(
-                  Icons.pause_rounded,
-                  size: 40,
-                ),
-              ),
-              // ClipOval(
-              //   child: Material(
-              //     child: InkWell(
-              //       onTap: () {},
-              //       child: Center(
-              //         child: Ink(
-              //           decoration: ShapeDecoration(
-              //             color: Theme.of(context).primaryColorDark,
-              //             shape: CircleBorder(),
-              //           ),
-              //           child: IconButton(
-              //             splashRadius: mediaQuery.width / 11,
-              //             onPressed: () {},
-              //             iconSize: mediaQuery.width / 8,
-              //             icon: Icon(
-              //               Icons.pause_rounded,
-              //               color: Colors.white,
-              //             ),
-              //           ),
-              //         ),
-              //       ),
-              //     ),
-              //   ),
-              // ),
-              Spacer(
-                flex: 1,
-              ),
-              IconButton(
-                // splashRadius: mediaQuery.width / 21,
-                splashRadius: 18,
-                // iconSize: mediaQuery.width / 15,
-                iconSize: 27,
-                onPressed: () {},
-                icon: Icon(
-                  Icons.volume_up_rounded,
-                ),
-              ),
-              Spacer(
-                flex: 2,
-              ),
-            ]),
+      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        const Spacer(
+          flex: 3,
+        ),
+        IconButton(
+          splashRadius: 18,
+          iconSize: 27,
+          onPressed: () {},
+          icon: const Icon(
+            Icons.volume_up_rounded,
           ),
-          Expanded(
-            flex: 1,
-            child: Align(
-              alignment: Alignment.bottomRight,
-              child: ClipOval(
-                child: Material(
-                  child: InkWell(
-                    onTap: () {},
-                    child: Ink(
-                      height: 35,
-                      width: 35,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.black, width: 1.5),
-                      ),
-                      child: Icon(
-                        size: 25,
-                        Icons.fork_right_rounded,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          )
-        ],
-      ),
+        ),
+        const Spacer(
+          flex: 1,
+        ),
+        FloatingActionButton(
+          heroTag: "playbtn",
+          onPressed: () {
+            if (!isEnd) {
+              isPause = !isPause;
+              playBtnHandler(isPause);
+            }
+          },
+          backgroundColor: Theme.of(context).primaryColorDark,
+          child: Icon(
+            isPause ? Icons.play_arrow : Icons.pause_rounded,
+            size: 40,
+          ),
+        ),
+        const Spacer(
+          flex: 1,
+        ),
+        IconButton(
+          // splashRadius: mediaQuery.width / 21,
+          splashRadius: 18,
+          // iconSize: mediaQuery.width / 15,
+          iconSize: 27,
+          onPressed: () {
+            sensorsHandler(true);
+            Navigator.of(context).pushNamed(DirectionScreen.routeName,
+                arguments: {
+                  'data': paths,
+                  'pastPaths': pastPaths
+                }).then((value) => sensorsHandler(false));
+          },
+          icon: const Icon(
+            // Icons.volume_up_rounded,
+            Icons.fork_right_rounded,
+          ),
+        ),
+        const Spacer(
+          flex: 3,
+        ),
+      ]),
     );
   }
 }
 
 class PathDetails extends StatelessWidget {
-  const PathDetails({
-    Key? key,
-    required this.mediaQuery,
-  }) : super(key: key);
+  PathDetails(
+      {Key? key,
+      required this.mediaQuery,
+      required this.nextPath,
+      required this.totalSteps,
+      required this.totalTurns,
+      required this.ongoingSteps,
+      required this.currentTurns})
+      : super(key: key);
 
   final Size mediaQuery;
+  PathItem? nextPath;
+  final totalSteps;
+  final totalTurns;
+  var ongoingSteps;
+  var currentTurns;
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: nextPath != null
+          ? MainAxisAlignment.spaceBetween
+          : MainAxisAlignment.end,
       children: [
-        Card(
-            margin: EdgeInsets.zero,
-            color: Theme.of(context).primaryColor,
-            elevation: 5,
-            shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(20),
-                    bottomRight: Radius.circular(20))),
-            child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                child: Row(
-                  children: [
-                    Row(children: [
-                      Text(
-                        "Then",
-                        style: TextStyle(
-                          fontSize: 15 / 720 * mediaQuery.height,
-                          fontWeight: FontWeight.w800,
+        if (nextPath != null)
+          Card(
+              margin: EdgeInsets.zero,
+              color: Theme.of(context).primaryColor,
+              elevation: 5,
+              shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(20),
+                      bottomRight: Radius.circular(20))),
+              child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  child: Row(
+                    children: [
+                      Row(children: [
+                        Text(
+                          "Then",
+                          style: TextStyle(
+                            fontSize: 15 / 720 * mediaQuery.height,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Icon(
+                          nextPath?.direction == 0
+                              ? MaterialCommunityIcons.arrow_up_bold
+                              : nextPath?.direction == 1
+                                  ? MaterialCommunityIcons.arrow_right_top_bold
+                                  : MaterialCommunityIcons.arrow_left_top_bold,
+                          size: mediaQuery.height / 25,
                           color: Colors.white,
                         ),
-                      ),
-                      Icon(
-                        // MaterialCommunityIcons.arrow_up_bold,
-                        MaterialCommunityIcons.arrow_left_top_bold,
-                        size: mediaQuery.height / 25,
-                        color: Colors.white,
-                      ),
-                    ])
-                  ],
-                ))),
-        Container(
-          child: Row(
-            children: [
-              Container(
-                child: Row(
-                  textBaseline: TextBaseline.alphabetic,
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  children: [
-                    Text(
-                      "Steps: ",
-                      style: TextStyle(fontSize: 15 / 720 * mediaQuery.height),
-                    ),
-                    Text(
-                      "10",
-                      style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 18 / 720 * mediaQuery.height),
-                    ),
-                    Text(
-                      "/80",
-                      style: TextStyle(fontSize: 15 / 720 * mediaQuery.height),
-                    )
-                  ],
-                ),
+                      ])
+                    ],
+                  ))),
+        Row(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              child: Row(
+                textBaseline: TextBaseline.alphabetic,
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                children: [
+                  Text(
+                    "Steps: ",
+                    style: TextStyle(fontSize: 15 / 720 * mediaQuery.height),
+                  ),
+                  Text(
+                    ongoingSteps.toString(),
+                    style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18 / 720 * mediaQuery.height),
+                  ),
+                  Text(
+                    "/$totalSteps",
+                    style: TextStyle(fontSize: 15 / 720 * mediaQuery.height),
+                  )
+                ],
               ),
-              SizedBox(
-                width: 8,
-              ),
-              Container(
-                child: Row(
-                  textBaseline: TextBaseline.alphabetic,
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      "Turns: ",
-                      style: TextStyle(fontSize: 15 / 720 * mediaQuery.height),
-                    ),
-                    Text(
-                      "2",
-                      style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 18 / 720 * mediaQuery.height),
-                    ),
-                    Text(
-                      "/3",
-                      style: TextStyle(fontSize: 15 / 720 * mediaQuery.height),
-                    )
-                  ],
+            ),
+            const SizedBox(
+              width: 8,
+            ),
+            Row(
+              textBaseline: TextBaseline.alphabetic,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  "Turns: ",
+                  style: TextStyle(fontSize: 15 / 720 * mediaQuery.height),
                 ),
-              )
-            ],
-          ),
+                Text(
+                  currentTurns.toString(),
+                  style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 18 / 720 * mediaQuery.height),
+                ),
+                Text(
+                  "/$totalTurns",
+                  style: TextStyle(fontSize: 15 / 720 * mediaQuery.height),
+                )
+              ],
+            )
+          ],
         )
       ],
     );
@@ -404,24 +753,32 @@ class PathDetails extends StatelessWidget {
 }
 
 class CurrentDirection extends StatelessWidget {
-  const CurrentDirection({
-    Key? key,
-    required this.mediaQuery,
-  }) : super(key: key);
+  CurrentDirection(
+      {Key? key,
+      required this.mediaQuery,
+      required this.currentPath,
+      required this.nextPath,
+      required this.stepsToGo})
+      : super(key: key);
 
   final Size mediaQuery;
-
+  PathItem? currentPath;
+  PathItem? nextPath;
+  int stepsToGo;
   @override
   Widget build(BuildContext context) {
     return Card(
         elevation: 5,
         margin: EdgeInsets.zero,
         color: Theme.of(context).primaryColorDark,
-        shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.only(
-                topRight: Radius.circular(20),
-                topLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20))),
+        shape: nextPath != null
+            ? const RoundedRectangleBorder(
+                borderRadius: BorderRadius.only(
+                    topRight: Radius.circular(20),
+                    topLeft: Radius.circular(20),
+                    bottomRight: Radius.circular(20)))
+            : const RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(Radius.circular(20))),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 15),
           child: Row(
@@ -430,18 +787,30 @@ class CurrentDirection extends StatelessWidget {
             children: [
               Icon(
                 color: Colors.white,
-                MaterialCommunityIcons.arrow_up_bold,
-                // MaterialCommunityIcons.arrow_left_top_bold,
+                currentPath != null
+                    ? currentPath!.direction == 0
+                        ? MaterialCommunityIcons.arrow_up_bold
+                        : currentPath!.direction == 1
+                            ? MaterialCommunityIcons.arrow_right_top_bold
+                            : MaterialCommunityIcons.arrow_left_top_bold
+                    : Icons.location_on_rounded,
                 size: mediaQuery.height / 12,
               ),
-              SizedBox(
+              const SizedBox(
                 width: 10,
               ),
-              Container(
+              SizedBox(
                 width: mediaQuery.width * 0.5,
                 child: Text(
-                  "Keep walking for 15 steps",
-                  // "Turn Left",
+                  currentPath != null
+                      ? currentPath!.direction == 0
+                          ? currentPath!.steps == 0
+                              ? "Head straight"
+                              : "Keep walking for $stepsToGo steps"
+                          : currentPath!.direction == 1
+                              ? "Turn Right"
+                              : "Turn Left"
+                      : "Reach Destination",
                   style: TextStyle(
                       color: Colors.white,
                       fontSize: 22 / 720 * mediaQuery.height,

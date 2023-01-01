@@ -5,16 +5,16 @@ import '../widgets/path_info_item.dart';
 
 class AllDirectionsBody extends StatelessWidget {
   const AllDirectionsBody(
-      {super.key,
-      // required this.directionsList,
-      required this.bgColor});
+      {super.key, required this.directionsList, required this.bgColor});
 
-  // final List<Map<String, dynamic>> directionsList;
+  final List<PathItem> directionsList;
   final Color bgColor;
 
   @override
   Widget build(BuildContext context) {
-    final paths = Provider.of<PathItems>(context).allPaths;
+    // final paths = Provider.of<PathItems>(context).allPaths;
+
+    //change to only listview
 
     return Expanded(
       child: ClipRRect(
@@ -26,7 +26,7 @@ class AllDirectionsBody extends StatelessWidget {
             builder: (ctx, path, _) => ListView.builder(
                 padding: EdgeInsets.only(top: 10, bottom: 10),
                 scrollDirection: Axis.vertical,
-                itemCount: paths.length,
+                itemCount: directionsList.length,
                 itemBuilder: (BuildContext ctx, index) {
                   return Card(
                     elevation: 6,
@@ -37,9 +37,10 @@ class AllDirectionsBody extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: PathInfoItem(path: paths[index]),
+                    child: PathInfoItem(
+                      path: directionsList[index],
+                    ),
                   );
-                  // return PathInfoItem();
                 }),
           ),
         ),

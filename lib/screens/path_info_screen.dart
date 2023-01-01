@@ -1,10 +1,14 @@
 import 'dart:io';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:platform_device_id/platform_device_id.dart';
 import 'package:provider/provider.dart';
 import 'package:puffway/providers/pathway.dart';
+import 'package:puffway/screens/start_record_screen.dart';
 import 'package:uuid/uuid.dart';
 import 'package:path/path.dart';
 
@@ -31,6 +35,14 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
 
   //uuid
   var uuid = Uuid();
+  var folderName;
+  var folderPath;
+
+  //firestore
+  var db = FirebaseFirestore.instance;
+
+  //list
+  late List<PathItem> allPaths;
 
   @override
   void initState() {
@@ -52,31 +64,86 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
     setState(() {});
   }
 
-  void _saveForm() {
+  void _saveForm() async {
     final isValid = _form.currentState?.validate();
     if (!isValid!) {
       return;
     }
 
     _form.currentState?.save();
+    var deviceId = await PlatformDeviceId.getDeviceId;
+    allPaths = Provider.of<PathItems>(this.context, listen: false).allPaths;
+    Pathway newPathway;
+    bool hasImagePath = false;
+
+    //reverse allPaths, direction == 1, direction = 2, direction == 2, direction = 1
+
+    for (var e in allPaths) {
+      if (e.imageURL != null) {
+        hasImagePath = true;
+      }
+    }
+    //title & desc
     if (_descriptionController.text.toString().trim() != '') {
-      createFolder(uuid.v1());
-      Provider.of<PathwayItem>(this.context, listen: false).addPathwayTitleDesc(
-          _titleController.text,
-          _descriptionController.text,
-          Provider.of<PathItems>(this.context, listen: false).allPaths);
+      if (hasImagePath) {
+        createFolder(uuid.v1()).whenComplete(() {
+          newPathway = Pathway(
+              timestamp: Timestamp.now(),
+              title: _titleController.text,
+              description: _descriptionController.text,
+              imageDocPath: folderPath,
+              // imageDocTitle: folderName,
+              paths: allPaths);
+          uploadToFirestore(deviceId, newPathway);
+        });
+      } else {
+        newPathway = Pathway(
+            timestamp: Timestamp.now(),
+            title: _titleController.text,
+            description: _descriptionController.text,
+            paths: allPaths);
+        uploadToFirestore(deviceId, newPathway);
+      }
     } else {
-      createFolder(uuid.v1());
-      Provider.of<PathwayItem>(this.context, listen: false).addPathwayTitle(
-          _titleController.text,
-          Provider.of<PathItems>(this.context, listen: false).allPaths);
+      //title only
+      if (hasImagePath) {
+        createFolder(uuid.v1()).whenComplete(() {
+          newPathway = Pathway(
+              timestamp: Timestamp.now(),
+              title: _titleController.text,
+              imageDocPath: folderPath,
+              // imageDocTitle: folderName,
+              paths: allPaths);
+
+          uploadToFirestore(deviceId, newPathway);
+        });
+      } else {
+        newPathway = Pathway(
+            timestamp: Timestamp.now(),
+            title: _titleController.text,
+            paths: allPaths);
+        uploadToFirestore(deviceId, newPathway);
+      }
     }
   }
 
+  void uploadToFirestore(String? deviceId, Pathway newPathway) {
+    db
+        .collection("deviceID")
+        .doc(deviceId)
+        .collection("pathway")
+        .withConverter(
+            fromFirestore: Pathway.fromFirestore,
+            toFirestore: (Pathway pathwayItem, options) =>
+                pathwayItem.ToFirestore())
+        .add(newPathway);
+  }
+
   Future<void> createFolder(String uuid) async {
-    final folderName = uuid;
+    folderName = uuid;
     final Directory? appDocDir = await getExternalStorageDirectory();
     final path = Directory("${appDocDir!.path}/$folderName");
+    folderPath = path.path;
     var status = await Permission.storage.status;
     if (!status.isGranted) {
       await Permission.storage.request();
@@ -90,16 +157,15 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
     }
   }
 
-  Future<void> saveImageToFolder(String path) async {
-    List<Map<String, dynamic>> allPaths =
-        Provider.of<PathItems>(this.context, listen: false).allPaths;
-    allPaths.forEach((element) async {
-      if (element.containsKey('imageURL')) {
-        File imageOldFile = element['imageURL'];
-        File imageNewFile = await File("$path/${basename(imageOldFile.path)}")
-            .writeAsBytes((element['imageURL'] as File).readAsBytesSync());
+  saveImageToFolder(String path) {
+    allPaths.forEach((element) {
+      if (element.imageURL != null) {
+        File imageOldFile = File(element.imageURL!);
+        File imageNewFile = File("$path/${basename(imageOldFile.path)}");
+        imageNewFile
+            .writeAsBytesSync((File(element.imageURL!)).readAsBytesSync());
         imageOldFile.deleteSync(recursive: false);
-        element.update('imageURL', (value) => imageNewFile);
+        element.imageURL = imageNewFile.path;
       }
     });
   }
@@ -116,19 +182,12 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 30),
               children: <Widget>[
                 const SizedBox(height: 20),
-
                 TextFormField(
                   cursorColor: Theme.of(context).primaryColor,
                   focusNode: _titleFocus,
                   controller: _titleController,
                   decoration: InputDecoration(
                     labelText: "Path Title",
-
-                    // floatingLabelStyle: TextStyle(
-                    //     color: _titleFocus.hasFocus
-                    //         ? Theme.of(context).primaryColor
-                    //         : null)
-
                     floatingLabelStyle: MaterialStateTextStyle.resolveWith(
                         (Set<MaterialState> states) {
                       final Color? color = states.contains(MaterialState.error)
@@ -147,9 +206,7 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
                     return null;
                   },
                 ),
-
                 const SizedBox(height: 30),
-
                 TextFormField(
                   controller: _descriptionController,
                   minLines: 1,
@@ -158,11 +215,6 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
                   focusNode: _descriptionFocus,
                   decoration: InputDecoration(
                     labelText: "Description (optional)",
-
-                    // floatingLabelStyle: TextStyle(
-                    //     color: _descriptionFocus.hasFocus
-                    //         ? Theme.of(context).primaryColor
-                    //         : null),
                     floatingLabelStyle: MaterialStateTextStyle.resolveWith(
                         (Set<MaterialState> states) {
                       final Color? color = states.contains(MaterialState.error)
@@ -176,9 +228,6 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
                   ),
                   keyboardType: TextInputType.multiline,
                   validator: (value) {
-                    // if (value!.isEmpty) {
-                    //   return "Please enter a description.";
-                    // }
                     if (value!.length < 5 && value.isNotEmpty) {
                       return "At least 5 characters long.";
                     }
@@ -190,22 +239,35 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
                     style: ButtonStyle(
                         padding: MaterialStateProperty.all(
                             const EdgeInsets.only(top: 10, bottom: 10))),
-                    onPressed: () => _saveForm(),
+                    onPressed: () {
+                      _saveForm();
+                      FocusManager.instance.primaryFocus?.unfocus();
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context) => AlertDialog(
+                          content: const Text('Save Successfully'),
+                          actions: <Widget>[
+                            TextButton(
+                              style: TextButton.styleFrom(
+                                  foregroundColor:
+                                      Theme.of(context).primaryColor),
+                              onPressed: () {
+                                Provider.of<PathItems>(this.context,
+                                        listen: false)
+                                    .clearAllPath();
+                                Navigator.popUntil(
+                                    context, ModalRoute.withName('/'));
+                              },
+                              child: const Text('Okay'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                     child: const Text(
                       "Save",
                       style: TextStyle(fontSize: 16),
                     ))
-                // Center(
-                //   child: ElevatedButton(
-                //       style: ButtonStyle(
-                //           padding: MaterialStateProperty.all(EdgeInsets.only(
-                //               top: 10, bottom: 10, left: 50, right: 50))),
-                //       onPressed: () {},
-                //       child: const Text(
-                //         "Save",
-                //         style: TextStyle(fontSize: 16),
-                //       )),
-                // )
               ],
             )),
       ),

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as path;
@@ -56,7 +57,8 @@ class _PathMemoScreenState extends State<PathMemoScreen> {
           steps: steps,
           textMemo: _descriptionController.text,
           imageURL: _storedImage,
-          isHorizontal: _isHorizontal));
+          isHorizontal: _isHorizontal,
+          timestamp: Timestamp.now()));
       memoSavedHandler();
       Navigator.of(context).pop();
     } else if (_storedImage != null) {
@@ -64,12 +66,16 @@ class _PathMemoScreenState extends State<PathMemoScreen> {
           direction: 0,
           steps: steps,
           imageURL: _storedImage,
-          isHorizontal: _isHorizontal));
+          isHorizontal: _isHorizontal,
+          timestamp: Timestamp.now()));
       memoSavedHandler();
       Navigator.of(context).pop();
     } else if (_descriptionController.text.toString().trim() != '') {
       Provider.of<PathItems>(context, listen: false).addPath(PathItem(
-          direction: 0, steps: steps, textMemo: _descriptionController.text));
+          direction: 0,
+          steps: steps,
+          textMemo: _descriptionController.text,
+          timestamp: Timestamp.now()));
       memoSavedHandler();
       Navigator.of(context).pop();
     } else {
@@ -100,8 +106,8 @@ class _PathMemoScreenState extends State<PathMemoScreen> {
     }
     final appDir = await syspaths.getApplicationDocumentsDirectory();
     final fileName = path.basename(imageFile.path);
-    print(appDir);
-    print(fileName);
+    // print(appDir);
+    // print(fileName);
 
     File savedImage = await File(imageFile.path)
         .copy('${appDir.path}/$fileName'); //add path id in front of file name
@@ -112,8 +118,8 @@ class _PathMemoScreenState extends State<PathMemoScreen> {
     _isHorizontal = decodedImage.width > decodedImage.height;
 
     setState(() {
-      _storedImage = savedImage;
-      print(_storedImage);
+      _storedImage = savedImage.path;
+      // print(_storedImage);
     });
   }
 
@@ -126,7 +132,7 @@ class _PathMemoScreenState extends State<PathMemoScreen> {
                   no: "Cancel",
                   yesOnPressed: () {
                     if (_storedImage != null) {
-                      (_storedImage as File).delete();
+                      File(_storedImage).delete();
                       _storedImage = null;
                     }
                     Navigator.popUntil(context,
@@ -189,7 +195,7 @@ class _PathMemoScreenState extends State<PathMemoScreen> {
                             border: Border.all(color: Colors.grey)),
                         child: _storedImage != null
                             ? Image.file(
-                                _storedImage,
+                                File(_storedImage),
                                 fit: BoxFit.fill,
                               )
                             : Center(
@@ -216,7 +222,7 @@ class _PathMemoScreenState extends State<PathMemoScreen> {
                                       no: "Cancel",
                                       yesOnPressed: () {
                                         setState(() {
-                                          (_storedImage as File).delete();
+                                          File(_storedImage).delete();
                                           _storedImage = null;
                                           Navigator.of(context).pop();
                                         });
