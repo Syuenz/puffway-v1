@@ -11,10 +11,9 @@ import 'package:motion_sensors/motion_sensors.dart';
 
 import 'package:flutter/material.dart';
 import 'package:vibration/vibration.dart';
-import '../widgets/all_directions_body.dart';
+
 import '../widgets/customized_alert_dialog.dart';
 import '../widgets/path_info_item.dart';
-import '../widgets/recording_bottom.dart';
 
 class RecordingScreen extends StatefulWidget {
   static const routeName = "/recording";
@@ -52,7 +51,6 @@ class _RecordingScreenState extends State<RecordingScreen> {
   int lastMemoSteps = 0;
   var isMemoSaved = false;
 
-  //dialog bug
   var isDialogShowing = false;
 
   @override
@@ -142,16 +140,16 @@ class _RecordingScreenState extends State<RecordingScreen> {
                         directionPointer = left;
                         addPathsToGlobal("left");
                         turningHandler();
-
                         Navigator.of(context).pop();
                       },
                       noOnPressed: () {
                         turningHandler();
-
                         Navigator.of(context).pop();
                       },
                     )).then((value) {
-              turningHandler();
+              if (value == null) {
+                turningHandler();
+              }
             });
           }
         } else if (currentDegree.toStringAsFixed(0) ==
@@ -178,7 +176,11 @@ class _RecordingScreenState extends State<RecordingScreen> {
                         turningHandler();
                         Navigator.of(context).pop();
                       },
-                    )).then((value) => {turningHandler()});
+                    )).then((value) {
+              if (value == null) {
+                turningHandler();
+              }
+            });
           }
         } else {
           direction = 0; //straight
@@ -259,13 +261,24 @@ class _RecordingScreenState extends State<RecordingScreen> {
               no: "Cancel",
               yesOnPressed: () {
                 Provider.of<PathItems>(context, listen: false).clearAllPath();
-                Navigator.popUntil(context, ModalRoute.withName('/'));
+                Navigator.pop(context, true);
               },
               noOnPressed: () {
                 sensorsHandler(false);
-                Navigator.pop(context);
+                Navigator.pop(context, false);
               },
-            ));
+            )).then((value) {
+      if (value != null) {
+        if (!value) {
+          sensorsHandler(false);
+        } else {
+          sensorsHandler(true);
+          Navigator.pop(context);
+        }
+      } else {
+        sensorsHandler(false);
+      }
+    });
     return false;
   }
 
@@ -290,7 +303,6 @@ class _RecordingScreenState extends State<RecordingScreen> {
       onWillPop: showDiscardDialog,
       child: Scaffold(
         appBar: AppBar(title: const Text("Path Record")),
-        // backgroundColor: Colors.grey[200],
         body: Padding(
             padding: EdgeInsets.all(20),
             child: Column(
@@ -338,7 +350,6 @@ class _RecordingScreenState extends State<RecordingScreen> {
                 ),
                 Text(
                   "Current Steps",
-                  // "$currentDegree",
                   style: TextStyle(fontSize: 16 / 720 * mediaQuery.size.height),
                 ),
                 const SizedBox(height: 15),
@@ -404,7 +415,6 @@ class RecordingBottom extends StatelessWidget {
       required this.memoSavedHandler,
       required this.deleteImageFromApp,
       required this.showDiscardDialog,
-      // required this.context,
       required this.steps,
       required this.paths,
       required this.resetSteps})

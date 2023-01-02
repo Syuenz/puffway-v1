@@ -357,8 +357,7 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
   }
 
   void directionBtnHandler() {
-    if (!(ongoingSteps == totalSteps ||
-        (ongoingSteps == totalSteps && currentTurns == totalTurns))) {
+    if (ongoingSteps != totalSteps) {
       sensorsHandler(false);
     }
   }
@@ -372,14 +371,24 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
               yes: "Confirm",
               no: "Cancel",
               yesOnPressed: () {
-                Navigator.popUntil(
-                    context, ModalRoute.withName(PathOverviewScreen.routeName));
+                Navigator.pop(context, true);
               },
               noOnPressed: () {
                 sensorsHandler(false);
-                Navigator.pop(context);
+                Navigator.pop(context, false);
               },
-            ));
+            )).then((value) {
+      if (value != null) {
+        if (!value) {
+          sensorsHandler(false);
+        } else {
+          sensorsHandler(true);
+          Navigator.pop(context);
+        }
+      } else {
+        sensorsHandler(false);
+      }
+    });
     return false;
   }
 
@@ -692,13 +701,13 @@ class TraceBottom extends StatelessWidget {
           iconSize: 27,
           onPressed: () {
             sensorsHandler(true);
-            ttsBtnHandler(true);
+
             Navigator.of(context).pushNamed(DirectionScreen.routeName,
                 arguments: {
                   'data': paths,
                   'pastPaths': pastPaths
                 }).then((value) {
-              directionBtnHandler;
+              directionBtnHandler();
             });
           },
           icon: const Icon(
