@@ -76,8 +76,6 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
     Pathway newPathway;
     bool hasImagePath = false;
 
-    //reverse allPaths, direction == 1, direction = 2, direction == 2, direction = 1
-
     for (var e in allPaths) {
       if (e.imageURL != null) {
         hasImagePath = true;
@@ -255,14 +253,25 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
                                 Provider.of<PathItems>(this.context,
                                         listen: false)
                                     .clearAllPath();
-                                Navigator.popUntil(
-                                    context, ModalRoute.withName('/'));
+                                Navigator.pop(context, "save");
+
+                                // Navigator.popUntil(
+                                //     context, ModalRoute.withName('/'));
                               },
                               child: const Text('Okay'),
                             ),
                           ],
                         ),
-                      );
+                      ).then((value) {
+                        if (value != null) {
+                          if (value == "save") {
+                            print("pathinfosave");
+                            Navigator.pop(context, "save");
+                          }
+                        } else {
+                          Navigator.pop(context);
+                        }
+                      });
                     },
                     child: const Text(
                       "Save",

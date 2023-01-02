@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:puffway/providers/pathway.dart';
 import 'package:puffway/screens/start_trace_screen.dart';
 import 'package:puffway/widgets/reversed_path_info_item.dart';
+import '../providers/appTheme.dart';
 import '../providers/path.dart';
 import '../widgets/all_directions_body.dart';
 import '../widgets/path_info_item.dart';
@@ -120,7 +121,10 @@ class PathOverviewScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
                 child: Container(
                   decoration: BoxDecoration(
-                      color: Color.fromARGB(255, 255, 186, 229),
+                      color: Provider.of<AppTheme>(context, listen: true)
+                              .isDarkMode
+                          ? Colors.grey
+                          : Color.fromARGB(255, 255, 186, 229),
                       borderRadius: BorderRadius.circular(20)),
                   child: ListView.builder(
                       padding: EdgeInsets.only(top: 10, bottom: 10),

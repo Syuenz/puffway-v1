@@ -12,6 +12,7 @@ import 'package:motion_sensors/motion_sensors.dart';
 import 'package:flutter/material.dart';
 import 'package:vibration/vibration.dart';
 
+import '../providers/appTheme.dart';
 import '../widgets/customized_alert_dialog.dart';
 import '../widgets/path_info_item.dart';
 
@@ -56,7 +57,6 @@ class _RecordingScreenState extends State<RecordingScreen> {
   @override
   void initState() {
     super.initState();
-    // Provider.of<PathItems>(context, listen: false).clearAllPath();
     footstepsHandler();
     directionHandler();
     motionSensors.accelerometerUpdateInterval =
@@ -140,14 +140,14 @@ class _RecordingScreenState extends State<RecordingScreen> {
                         directionPointer = left;
                         addPathsToGlobal("left");
                         turningHandler();
-                        Navigator.of(context).pop();
+                        Navigator.pop(context, '');
                       },
                       noOnPressed: () {
                         turningHandler();
-                        Navigator.of(context).pop();
+                        Navigator.pop(context, '');
                       },
                     )).then((value) {
-              if (value == null) {
+              if (value != '') {
                 turningHandler();
               }
             });
@@ -170,14 +170,14 @@ class _RecordingScreenState extends State<RecordingScreen> {
                         directionPointer = right;
                         addPathsToGlobal("right");
                         turningHandler();
-                        Navigator.of(context).pop();
+                        Navigator.pop(context, '');
                       },
                       noOnPressed: () {
                         turningHandler();
-                        Navigator.of(context).pop();
+                        Navigator.pop(context, '');
                       },
                     )).then((value) {
-              if (value == null) {
+              if (value != '') {
                 turningHandler();
               }
             });
@@ -217,17 +217,21 @@ class _RecordingScreenState extends State<RecordingScreen> {
     if (isPause) {
       _streamAccelerometerSubscription.cancel();
       _streamOrientationSubscription.cancel();
+      print("cancel");
     } else {
+      print("resume");
       directionHandler();
       footstepsHandler();
     }
   }
 
   void turningHandler() {
-    refreshDegrees = true; //to set the directionPointer to new degree
-    isDialogShowing = false;
-    directionHandler();
-    footstepsHandler();
+    setState(() {
+      refreshDegrees = true; //to set the directionPointer to new degree
+      isDialogShowing = false;
+      directionHandler();
+      footstepsHandler();
+    });
   }
 
   void memoSavedHandler() {
@@ -237,11 +241,16 @@ class _RecordingScreenState extends State<RecordingScreen> {
   }
 
   bool memoButtonHandler() {
-    if (steps < 10 && isMemoSaved) {
+    if (steps > 0) {
+      if (steps < 10 && isMemoSaved) {
+        return false;
+      } else if (steps >= 10 && isMemoSaved) {
+        return true;
+      }
+    } else {
       return false;
-    } else if (steps >= 10 && isMemoSaved) {
-      return true;
     }
+
     return true;
   }
 
@@ -358,7 +367,10 @@ class _RecordingScreenState extends State<RecordingScreen> {
                     borderRadius: BorderRadius.circular(20),
                     child: Container(
                       decoration: BoxDecoration(
-                          color: Color.fromARGB(255, 255, 186, 229),
+                          color: Provider.of<AppTheme>(context, listen: true)
+                                  .isDarkMode
+                              ? Colors.grey
+                              : Color.fromARGB(255, 255, 186, 229),
                           borderRadius: BorderRadius.circular(20)),
                       child: Consumer<PathItems>(
                         builder: (ctx, path, _) => ListView.builder(
@@ -485,7 +497,17 @@ class RecordingBottom extends StatelessWidget {
               Navigator.of(context)
                   .pushNamed(PathInfoScreen.routeName)
                   .then((value) {
-                sensorsHandler(false);
+                print(value);
+                if (value != null) {
+                  if (value == "save") {
+                    sensorsHandler(true);
+                    Navigator.pop(context);
+                  } else {
+                    sensorsHandler(false);
+                  }
+                } else {
+                  sensorsHandler(false);
+                }
               });
             } else if (paths.isNotEmpty && steps > 0) {
               PathItem straightPath = PathItem(
@@ -496,7 +518,16 @@ class RecordingBottom extends StatelessWidget {
               Navigator.of(context)
                   .pushNamed(PathInfoScreen.routeName)
                   .then((value) {
-                sensorsHandler(false);
+                print(value);
+                if (value != null) {
+                  if (value == "save") {
+                    print("recordingsave");
+                    sensorsHandler(true);
+                    Navigator.pop(context);
+                  }
+                } else {
+                  sensorsHandler(false);
+                }
               });
             } else {
               showDialog(

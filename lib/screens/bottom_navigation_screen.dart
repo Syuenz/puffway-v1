@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../providers/appTheme.dart';
 import './history_screen.dart';
 import './settings_screen.dart';
 import './start_record_screen.dart';
@@ -49,7 +51,9 @@ class _BottomNavigationScreenState extends State<BottomNavigationScreen> {
       body: _pages[_selectedPageIndex]['page'] as Widget,
       bottomNavigationBar: BottomNavigationBar(
         onTap: _selectPage,
-        backgroundColor: Theme.of(context).primaryColor,
+        backgroundColor: Provider.of<AppTheme>(context, listen: true).isDarkMode
+            ? Colors.black
+            : Theme.of(context).primaryColor,
         unselectedItemColor: Color.fromARGB(133, 255, 255, 255),
         selectedItemColor: Color.fromARGB(255, 255, 255, 255),
         currentIndex: _selectedPageIndex,

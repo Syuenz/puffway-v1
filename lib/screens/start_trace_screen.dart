@@ -225,14 +225,16 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
                       onPressed: () {
                         refreshDegrees = true;
                         isDialogShowing = false;
-                        Navigator.of(context).pop();
+                        Navigator.pop(context, '');
                       },
                       child: const Text('Okay'),
                     ),
                   ],
                 ),
               ).then((value) {
-                turningHandler();
+                if (value != '') {
+                  turningHandler();
+                }
               });
             }
           } else if (currentDegree.toStringAsFixed(0) ==
@@ -265,14 +267,16 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
                       onPressed: () {
                         refreshDegrees = true;
                         isDialogShowing = false;
-                        Navigator.of(context).pop();
+                        Navigator.pop(context, '');
                       },
                       child: const Text('Okay'),
                     ),
                   ],
                 ),
               ).then((value) {
-                turningHandler();
+                if (value != '') {
+                  turningHandler();
+                }
               });
             }
           } else if (currentDegree.toStringAsFixed(0) ==
@@ -309,8 +313,25 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
           PathItem pathToRemoved = upcomingPaths.first;
           pastPaths.add(pathToRemoved);
           upcomingPaths.removeAt(0);
-          execPaths.add(currentPath!);
-          previousTotalSteps = calPreviousTotalSteps();
+          // execPaths.add(currentPath!);
+          // previousTotalSteps = calPreviousTotalSteps();
+          showDialog(
+            context: context,
+            builder: (BuildContext context) => AlertDialog(
+              content: const Text(
+                  'Results may not be accurate as instructions are not followed.'),
+              actions: <Widget>[
+                TextButton(
+                  style: TextButton.styleFrom(
+                      foregroundColor: Theme.of(context).primaryColor),
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Okay'),
+                ),
+              ],
+            ),
+          );
         }
       });
     });

@@ -37,9 +37,7 @@ class PathInfoItem extends StatelessWidget {
             ),
             Text(
               path.direction == 0
-                  ? path.steps == 0
-                      ? "Head straight"
-                      : "Keep walking for ${path.steps} steps"
+                  ? "Keep walking for ${path.steps} steps"
                   : path.direction == 1
                       ? "Turn Left"
                       : "Turn Right",
