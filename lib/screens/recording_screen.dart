@@ -193,6 +193,7 @@ class _RecordingScreenState extends State<RecordingScreen> {
       exactDistance = calculateMagnitude(event.x, event.y, event.z);
       magnitudeDelta = exactDistance - previousMagnitude;
       previousMagnitude = exactDistance;
+
       setState(() {
         if (magnitudeDelta > 3) {
           if (initial == false) {

@@ -3,14 +3,14 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
 import 'package:motion_sensors/motion_sensors.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import 'package:card_swiper/card_swiper.dart';
-import 'package:provider/provider.dart';
 import 'package:puffway/providers/path.dart';
 import 'package:puffway/screens/path_overview_screen.dart';
+import 'package:puffway/widgets/image_dialog.dart';
 import 'package:vector_math/vector_math_64.dart' hide Colors;
 import 'package:vibration/vibration.dart';
 
@@ -69,6 +69,10 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
 
   List<Map<int, PathItem>> memoPaths = [];
 
+  //tts
+  late FlutterTts flutterTts;
+  var isStopped = false;
+
   @override
   void initState() {
     super.initState();
@@ -78,6 +82,7 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
         Duration.microsecondsPerSecond ~/ 1;
     motionSensors.orientationUpdateInterval =
         Duration.microsecondsPerSecond ~/ 1;
+    ttsConfig();
   }
 
   @override
@@ -85,6 +90,7 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
     super.dispose();
     _streamOrientationSubscription.cancel();
     _streamAccelerometerSubscription.cancel();
+    flutterTts.stop();
   }
 
   Future<void> footstepsHandler() async {
@@ -101,17 +107,13 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
             if (memoPaths.isNotEmpty) {
               memoSwipeHandler();
             }
-
-            // if (ongoingSteps == totalSteps) {
-            //   currentPath = null;
-            //   PathItem pathToRemoved = upcomingPaths.first;
-            //   pastPaths.add(pathToRemoved);
-            //   upcomingPaths.removeAt(0);
-            //   execPaths.add(currentPath!);
-            //   previousTotalSteps = calPreviousTotalSteps();
-            // }
             if (upcomingPaths.isNotEmpty) {
               pathHandler();
+            }
+            if (currentPath?.direction == 2) {
+              flutterTts.speak("Turn Left");
+            } else if (currentPath?.direction == 1) {
+              flutterTts.speak("Turn Right");
             }
           } else {
             initial = false;
@@ -120,6 +122,11 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
             nextPath = upcomingPaths.elementAt(1);
             execPaths.add(currentPath!);
             previousTotalSteps = calPreviousTotalSteps();
+            if (currentPath?.direction == 2) {
+              flutterTts.speak("Turn Left");
+            } else if (currentPath?.direction == 1) {
+              flutterTts.speak("Turn Right");
+            }
           }
         }
       });
@@ -230,6 +237,11 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
             }
           } else if (currentDegree.toStringAsFixed(0) ==
               left.toStringAsFixed(0)) {
+            if (nextPath?.direction == 2) {
+              flutterTts.speak("Turn Left");
+            } else if (nextPath?.direction == 1) {
+              flutterTts.speak("Turn Right");
+            }
             setState(() {
               currentTurns++;
               ongoingSteps++;
@@ -265,6 +277,11 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
             }
           } else if (currentDegree.toStringAsFixed(0) ==
               right.toStringAsFixed(0)) {
+            if (nextPath?.direction == 2) {
+              flutterTts.speak("Turn Left");
+            } else if (nextPath?.direction == 1) {
+              flutterTts.speak("Turn Right");
+            }
             setState(() {
               currentTurns++;
               ongoingSteps++;
@@ -275,20 +292,35 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
         }
 
         if (ongoingSteps == totalSteps && currentTurns == totalTurns) {
+          playBtnHandler(true);
+          flutterTts.speak("Reach Destination");
+          isEnd = true;
           currentPath = null;
           PathItem pathToRemoved = upcomingPaths.first;
           pastPaths.add(pathToRemoved);
           upcomingPaths.removeAt(0);
           execPaths.add(currentPath!);
           previousTotalSteps = calPreviousTotalSteps();
-          playBtnHandler(true);
-          isEnd = true;
         } else if (ongoingSteps == totalSteps) {
           playBtnHandler(true);
+          flutterTts.speak("Reach Destination");
           isEnd = true;
+          currentPath = null;
+          PathItem pathToRemoved = upcomingPaths.first;
+          pastPaths.add(pathToRemoved);
+          upcomingPaths.removeAt(0);
+          execPaths.add(currentPath!);
+          previousTotalSteps = calPreviousTotalSteps();
         }
       });
     });
+  }
+
+  ttsConfig() {
+    flutterTts = FlutterTts();
+    flutterTts.setLanguage('en');
+    flutterTts.setSpeechRate(0.5);
+    flutterTts.setVolume(0.5);
   }
 
   void sensorsHandler(bool isPause) {
@@ -313,6 +345,22 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
       this.isPause = isPause;
       sensorsHandler(isPause);
     });
+  }
+
+  void ttsBtnHandler(bool isStopped) {
+    this.isStopped = isStopped;
+    if (isStopped) {
+      flutterTts.setVolume(0);
+    } else {
+      flutterTts.setVolume(0.5);
+    }
+  }
+
+  void directionBtnHandler() {
+    if (!(ongoingSteps == totalSteps ||
+        (ongoingSteps == totalSteps && currentTurns == totalTurns))) {
+      sensorsHandler(false);
+    }
   }
 
   Future<bool> showDiscardDialog() async {
@@ -402,6 +450,9 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
                   isPause: isPause,
                   playBtnHandler: playBtnHandler,
                   isEnd: isEnd,
+                  ttsBtnHandler: ttsBtnHandler,
+                  isStopped: isStopped,
+                  directionBtnHandler: directionBtnHandler,
                 )
               ],
             ),
@@ -473,12 +524,27 @@ class TraceBody extends StatelessWidget {
                                               .isHorizontal!
                                           ? mediaQuery.height / 3
                                           : null,
-                                      child: Image.file(
-                                        File(memoPaths[index]
-                                            .values
-                                            .first
-                                            .imageURL!),
-                                        fit: BoxFit.contain,
+                                      child: InkWell(
+                                        onTap: () async {
+                                          await showDialog(
+                                              context: context,
+                                              builder: (_) => ImageDialog(
+                                                  imageURL: memoPaths[index]
+                                                      .values
+                                                      .first
+                                                      .imageURL!,
+                                                  isHorizontal: memoPaths[index]
+                                                      .values
+                                                      .first
+                                                      .isHorizontal!));
+                                        },
+                                        child: Image.file(
+                                          File(memoPaths[index]
+                                              .values
+                                              .first
+                                              .imageURL!),
+                                          fit: BoxFit.contain,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -563,7 +629,10 @@ class TraceBottom extends StatelessWidget {
       required this.sensorsHandler,
       required this.playBtnHandler,
       required this.isPause,
-      required this.isEnd})
+      required this.isEnd,
+      required this.ttsBtnHandler,
+      required this.isStopped,
+      required this.directionBtnHandler})
       : super(key: key);
 
   final Size mediaQuery;
@@ -573,6 +642,9 @@ class TraceBottom extends StatelessWidget {
   Function playBtnHandler;
   bool isPause;
   bool isEnd;
+  Function ttsBtnHandler;
+  bool isStopped;
+  Function directionBtnHandler;
 
   @override
   Widget build(BuildContext context) {
@@ -585,9 +657,12 @@ class TraceBottom extends StatelessWidget {
         IconButton(
           splashRadius: 18,
           iconSize: 27,
-          onPressed: () {},
-          icon: const Icon(
-            Icons.volume_up_rounded,
+          onPressed: () {
+            isStopped = !isStopped;
+            ttsBtnHandler(isStopped);
+          },
+          icon: Icon(
+            isStopped ? Icons.volume_off : Icons.volume_up_rounded,
           ),
         ),
         const Spacer(
@@ -617,11 +692,14 @@ class TraceBottom extends StatelessWidget {
           iconSize: 27,
           onPressed: () {
             sensorsHandler(true);
+            ttsBtnHandler(true);
             Navigator.of(context).pushNamed(DirectionScreen.routeName,
                 arguments: {
                   'data': paths,
                   'pastPaths': pastPaths
-                }).then((value) => sensorsHandler(false));
+                }).then((value) {
+              directionBtnHandler;
+            });
           },
           icon: const Icon(
             // Icons.volume_up_rounded,
