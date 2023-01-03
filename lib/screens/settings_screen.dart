@@ -29,8 +29,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   backgroundColor: Colors.white,
                   foregroundColor: Colors.black,
                   radius: 45,
-                  child: IconButton(
-                      onPressed: () {}, iconSize: 60, icon: Icon(Icons.person)),
+                  child: Image.asset("assets/images/puffway.png"),
+                  // child: IconButton(
+                  //     onPressed: () {}, iconSize: 60, icon: Icon(Icons.person)),
                 ),
               ),
               const SizedBox(

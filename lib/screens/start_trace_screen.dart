@@ -13,7 +13,9 @@ import 'package:puffway/screens/path_overview_screen.dart';
 import 'package:puffway/widgets/image_dialog.dart';
 import 'package:vector_math/vector_math_64.dart' hide Colors;
 import 'package:vibration/vibration.dart';
+import 'package:provider/provider.dart';
 
+import '../providers/appTheme.dart';
 import '../screens/directions_screen.dart';
 import '../providers/pathway.dart';
 import '../widgets/customized_alert_dialog.dart';
@@ -232,6 +234,7 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
                   ],
                 ),
               ).then((value) {
+                print(value);
                 if (value != '') {
                   turningHandler();
                 }
@@ -274,6 +277,7 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
                   ],
                 ),
               ).then((value) {
+                print(value);
                 if (value != '') {
                   turningHandler();
                 }
@@ -303,8 +307,8 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
           PathItem pathToRemoved = upcomingPaths.first;
           pastPaths.add(pathToRemoved);
           upcomingPaths.removeAt(0);
-          execPaths.add(currentPath!);
-          previousTotalSteps = calPreviousTotalSteps();
+          // execPaths.add(currentPath!);
+          // previousTotalSteps = calPreviousTotalSteps();
         } else if (ongoingSteps == totalSteps) {
           playBtnHandler(true);
           flutterTts.speak("Reach Destination");
@@ -625,15 +629,24 @@ class TraceBody extends StatelessWidget {
                             ));
                       },
                       itemCount: memoPaths.length,
-                      pagination: const SwiperPagination(
+                      pagination: SwiperPagination(
                           alignment: Alignment.bottomCenter,
                           margin: EdgeInsets.all(8),
                           builder: FractionPaginationBuilder(
                               activeFontSize: 22,
                               fontSize: 15,
-                              color: Colors.black)),
-                      control: const SwiperControl(
+                              color:
+                                  Provider.of<AppTheme>(context, listen: true)
+                                          .isDarkMode
+                                      ? Colors.white54
+                                      : Colors.black)),
+                      control: SwiperControl(
                           iconPrevious: Icons.arrow_back_ios_new,
+                          disableColor:
+                              Provider.of<AppTheme>(context, listen: true)
+                                      .isDarkMode
+                                  ? Colors.white38
+                                  : null,
                           padding: EdgeInsets.all(0)),
                     ),
                   )

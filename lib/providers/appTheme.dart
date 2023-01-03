@@ -16,7 +16,7 @@ class AppTheme extends ChangeNotifier {
     ),
 
     cardTheme: CardTheme(
-      color: Color(0xFF151515),
+      color: Color.fromARGB(255, 41, 41, 41),
     ),
     iconTheme: const IconThemeData(
       color: Colors.white54,
