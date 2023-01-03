@@ -57,7 +57,7 @@ dependencies:
   vibration: ^1.7.5
   flutter_tts: ^3.6.3
   shared_preferences: ^2.0.15
-
+  flutter_native_splash: ^2.2.16
 
 
 dev_dependencies:
@@ -67,6 +67,10 @@ flutter_icons:
   android: "launcher_icon"
   ios: true
   image_path: "assets/images/puffway.png"
+
+flutter_native_splash:
+  image: "assets/images/splash-puffway.png"
+  color: "#F454CD"
 
   flutter_test:
     sdk: flutter
