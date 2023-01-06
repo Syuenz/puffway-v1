@@ -52,8 +52,10 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
 
   //sensors
   final Vector3 _orientation = Vector3.zero();
-  late StreamSubscription<dynamic> _streamAccelerometerSubscription;
-  late StreamSubscription<dynamic> _streamOrientationSubscription;
+  // late StreamSubscription<dynamic> _streamAccelerometerSubscription;
+  // late StreamSubscription<dynamic> _streamOrientationSubscription;
+  StreamSubscription<dynamic>? _streamAccelerometerSubscription = null;
+  StreamSubscription<dynamic>? _streamOrientationSubscription = null;
 
   //footsteps
   double exactDistance = 0.0;
@@ -95,8 +97,8 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
 
   @override
   void dispose() {
-    _streamOrientationSubscription.cancel();
-    _streamAccelerometerSubscription.cancel();
+    _streamOrientationSubscription?.cancel();
+    _streamAccelerometerSubscription?.cancel();
     widget.turnsController.removeListener(() {});
     flutterTts.stop();
     Get.deleteAll();
@@ -152,7 +154,7 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
   }
 
   void startTimer() async {
-    const oneMilSec = const Duration(milliseconds: 80);
+    const oneMilSec = Duration(milliseconds: 80);
     var time = startTime;
     widget._timer = Timer.periodic(
       oneMilSec,
@@ -254,11 +256,11 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
 
       if (currentPath?.direction != 0 && ongoingSteps.value != totalSteps) {
         widget.turnsController.turnValidation.value = false;
-        await _streamOrientationSubscription.cancel();
+        await _streamOrientationSubscription?.cancel();
         directionHandler();
       } else {
         widget.turnsController.turnValidation.value = false;
-        await _streamOrientationSubscription.cancel();
+        await _streamOrientationSubscription?.cancel();
       }
     }
   }
@@ -281,7 +283,13 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
         showDialog(
           context: context,
           builder: (BuildContext context) => AlertDialog(
-            title: const Text('Please TURN LEFT'),
+            title: Text(
+              'Please TURN LEFT',
+              style: TextStyle(
+                  color: Provider.of<AppTheme>(context).isDarkMode
+                      ? Colors.white
+                      : null),
+            ),
             content:
                 const Text('Head back to orignal direction before dismiss.'),
             actions: <Widget>[
@@ -328,7 +336,11 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
         showDialog(
           context: context,
           builder: (BuildContext context) => AlertDialog(
-            title: const Text('Please TURN RIGHT'),
+            title: Text('Please TURN RIGHT',
+                style: TextStyle(
+                    color: Provider.of<AppTheme>(context).isDarkMode
+                        ? Colors.white
+                        : null)),
             content:
                 const Text('Head back to orignal direction before dismiss.'),
             actions: <Widget>[
@@ -407,14 +419,14 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
   Future<void> sensorsHandler(bool isPause) async {
     if (isPause) {
       widget.turnsController.turnValidation.value = false;
-      await _streamOrientationSubscription.cancel();
-      await _streamAccelerometerSubscription.cancel();
+      await _streamOrientationSubscription?.cancel();
+      await _streamAccelerometerSubscription?.cancel();
     } else {
       if (currentPath?.direction != 0) {
         widget.turnsController.turnValidation.value = true;
       } else if (currentPath?.direction == 0) {
         widget.turnsController.turnValidation.value = true;
-        await _streamOrientationSubscription.cancel();
+        await _streamOrientationSubscription?.cancel();
       }
     }
   }

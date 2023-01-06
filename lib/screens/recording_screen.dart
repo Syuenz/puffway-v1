@@ -184,7 +184,6 @@ class _RecordingScreenState extends State<RecordingScreen> {
       _orientation.setValues(event.yaw, event.pitch, event.roll);
       if (await motionSensors.isOrientationAvailable()) {
         if (refreshDegrees) {
-          // directionPointer = currentDegree;
           directionPointer = (360 - degrees(_orientation.x) % 360).abs();
           refreshDegrees = false;
         }
@@ -200,14 +199,9 @@ class _RecordingScreenState extends State<RecordingScreen> {
           left = (directionPointer - 40).abs();
           right = (directionPointer + 40).abs();
         }
-
-        print('dP:$directionPointer');
-        print('current: $currentDegree');
-        print('left:$left');
-        print('right:$right');
       }
 
-      Future.delayed(Duration(milliseconds: 100));
+      Future.delayed(const Duration(milliseconds: 100));
       if ((currentDegree.truncate() / 10) * 10 == (left.truncate() / 10) * 10 &&
           !isDialogShowing) {
         isDialogShowing = true;
@@ -220,7 +214,7 @@ class _RecordingScreenState extends State<RecordingScreen> {
         rightState();
         return;
       } else {
-        direction = 0; //straight
+        direction = 0;
       }
     });
   }

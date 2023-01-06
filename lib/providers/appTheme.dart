@@ -6,16 +6,14 @@ class AppTheme extends ChangeNotifier {
   static const themeColor = Color.fromARGB(255, 248, 85, 199);
 
   final darkTheme = ThemeData(
-    scaffoldBackgroundColor: Color.fromARGB(255, 0, 0, 0),
-    // brightness: Brightness.dark,
-    appBarTheme: AppBarTheme(
+    scaffoldBackgroundColor: const Color.fromARGB(255, 0, 0, 0),
+    appBarTheme: const AppBarTheme(
       color: Color.fromARGB(255, 57, 57, 57),
       iconTheme: IconThemeData(
         color: Colors.white,
       ),
     ),
-
-    cardTheme: CardTheme(
+    cardTheme: const CardTheme(
       color: Color.fromARGB(255, 41, 41, 41),
     ),
     iconTheme: const IconThemeData(
@@ -33,14 +31,13 @@ class AppTheme extends ChangeNotifier {
       bodyColor: Colors.white,
       displayColor: Colors.white,
     ),
-    dialogTheme: DialogTheme(backgroundColor: Color(0xFF151515)),
-
+    dialogTheme: const DialogTheme(backgroundColor: Color(0xFF151515)),
     primaryColor: themeColor,
-    primaryColorDark: Color.fromARGB(255, 207, 30, 148),
+    primaryColorDark: const Color.fromARGB(255, 207, 30, 148),
     errorColor: Colors.redAccent,
     elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-      backgroundColor: Color.fromARGB(255, 255, 40, 183),
+      backgroundColor: const Color.fromARGB(255, 255, 40, 183),
       elevation: 5,
     )),
     inputDecorationTheme: const InputDecorationTheme(
@@ -56,7 +53,7 @@ class AppTheme extends ChangeNotifier {
       ),
     ),
     colorScheme: ColorScheme.fromSwatch().copyWith(
-      secondary: Color.fromARGB(255, 195, 0, 130), // Your accent color
+      secondary: const Color.fromARGB(255, 195, 0, 130), // Your accent color
     ),
   );
 
@@ -64,11 +61,11 @@ class AppTheme extends ChangeNotifier {
     scaffoldBackgroundColor: Colors.grey[200],
     appBarTheme: const AppBarTheme(color: themeColor),
     primaryColor: themeColor,
-    primaryColorDark: Color.fromARGB(255, 207, 30, 148),
+    primaryColorDark: const Color.fromARGB(255, 207, 30, 148),
     errorColor: Colors.redAccent,
     elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-      backgroundColor: Color.fromARGB(255, 255, 40, 183),
+      backgroundColor: const Color.fromARGB(255, 255, 40, 183),
       elevation: 5,
     )),
     inputDecorationTheme: const InputDecorationTheme(
@@ -80,7 +77,7 @@ class AppTheme extends ChangeNotifier {
       ),
     ),
     colorScheme: ColorScheme.fromSwatch().copyWith(
-      secondary: Color.fromARGB(255, 195, 0, 130), // Your accent color
+      secondary: const Color.fromARGB(255, 195, 0, 130), // Your accent color
     ),
   );
 
@@ -91,13 +88,11 @@ class AppTheme extends ChangeNotifier {
     _themeData = lightTheme;
     isDarkMode = false;
     StorageManager.readData('themeMode').then((value) {
-      print('value read from storage: ' + value.toString());
       var themeMode = value ?? 'light';
       if (themeMode == 'light') {
         _themeData = lightTheme;
         isDarkMode = false;
       } else {
-        print('setting dark theme');
         _themeData = darkTheme;
         isDarkMode = true;
       }
@@ -120,18 +115,4 @@ class AppTheme extends ChangeNotifier {
     }
     notifyListeners();
   }
-
-  // void setDarkMode() async {
-  //   isDarkMode = true;
-  //   _themeData = darkTheme;
-  //   StorageManager.saveData('themeMode', 'dark');
-  //   notifyListeners();
-  // }
-
-  // void setLightMode() async {
-  //   isDarkMode = false;
-  //   _themeData = lightTheme;
-  //   StorageManager.saveData('themeMode', 'light');
-  //   notifyListeners();
-  // }
 }
