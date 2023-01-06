@@ -6,7 +6,6 @@ import 'package:puffway/screens/start_trace_screen.dart';
 import 'package:puffway/widgets/reversed_path_info_item.dart';
 import '../providers/appTheme.dart';
 import '../providers/path.dart';
-import '../widgets/all_directions_body.dart';
 import '../widgets/path_info_item.dart';
 
 class PathOverviewScreen extends StatelessWidget {

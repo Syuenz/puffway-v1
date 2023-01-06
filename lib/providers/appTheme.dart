@@ -44,6 +44,10 @@ class AppTheme extends ChangeNotifier {
       elevation: 5,
     )),
     inputDecorationTheme: const InputDecorationTheme(
+      enabledBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.grey),
+      ),
+      labelStyle: TextStyle(color: Colors.grey),
       focusedBorder: OutlineInputBorder(
         borderSide: BorderSide(color: themeColor, width: 2),
       ),

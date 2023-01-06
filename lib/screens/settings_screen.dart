@@ -14,6 +14,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     var dark = Provider.of<AppTheme>(context).isDarkMode;
+    final mediaQuery = MediaQuery.of(context).size;
+
     return Scaffold(
       // backgroundColor: Colors.grey[200],
       body: Padding(
@@ -22,22 +24,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             children: [
               const SizedBox(height: 20),
-              CircleAvatar(
-                backgroundColor: Colors.black,
-                radius: 48,
-                child: CircleAvatar(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black,
-                  radius: 45,
-                  child: Image.asset("assets/images/puffway.png"),
-                  // child: IconButton(
-                  //     onPressed: () {}, iconSize: 60, icon: Icon(Icons.person)),
-                ),
-              ),
+              Container(
+                  height: mediaQuery.height * 0.1,
+                  child: Image.asset("assets/images/puffway.png")),
               const SizedBox(
-                height: 15,
+                height: 8,
               ),
-              Text("Version 2.0"),
+              Text("Puffway"),
               const SizedBox(
                 height: 15,
               ),

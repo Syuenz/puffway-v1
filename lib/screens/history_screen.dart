@@ -133,7 +133,9 @@ class HistoryItem extends StatelessWidget {
                 ),
                 onPressed: () {
                   if (data.imageDocPath != null) {
-                    Directory(data.imageDocPath!).deleteSync(recursive: true);
+                    if (Directory(data.imageDocPath!).existsSync()) {
+                      Directory(data.imageDocPath!).deleteSync(recursive: true);
+                    }
                   }
                   FirebaseFirestore.instance
                       .collection("deviceID")

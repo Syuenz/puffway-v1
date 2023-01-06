@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:flutter_vector_icons/flutter_vector_icons.dart';
+import 'package:get/get.dart';
 import 'package:motion_sensors/motion_sensors.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import 'package:card_swiper/card_swiper.dart';
@@ -18,12 +19,15 @@ import 'package:provider/provider.dart';
 import '../providers/appTheme.dart';
 import '../screens/directions_screen.dart';
 import '../providers/pathway.dart';
+import '../utils/TurnsHandler.dart';
 import '../widgets/customized_alert_dialog.dart';
 
 class StartTraceScreen extends StatefulWidget {
   static const routeName = "/start-trace";
+  late Timer _timer;
+  final turnsController = Get.put(TurnsHandler());
 
-  const StartTraceScreen({super.key});
+  StartTraceScreen({super.key});
 
   @override
   State<StartTraceScreen> createState() => _StartTraceScreenState();
@@ -45,6 +49,7 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
   int totalSteps = 0;
   int totalTurns = 0;
   SwiperController controller = SwiperController();
+  bool lastStep = false;
 
   //sensors
   final Vector3 _orientation = Vector3.zero();
@@ -56,6 +61,7 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
   double previousMagnitude = 0.0;
   double magnitudeDelta = 0.0;
   var initial = true;
+  var startTime = 1;
 
   //direction
   double directionPointer = 0.0;
@@ -79,7 +85,7 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
   void initState() {
     super.initState();
     footstepsHandler();
-    directionHandler();
+    turnsHandlerListener();
     motionSensors.accelerometerUpdateInterval =
         Duration.microsecondsPerSecond ~/ 1;
     motionSensors.orientationUpdateInterval =
@@ -89,10 +95,40 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
 
   @override
   void dispose() {
-    super.dispose();
     _streamOrientationSubscription.cancel();
     _streamAccelerometerSubscription.cancel();
+    widget.turnsController.removeListener(() {});
     flutterTts.stop();
+    Get.deleteAll();
+    super.dispose();
+  }
+
+  turnsHandlerListener() {
+    widget.turnsController.turnValidation.listen((validation) async {
+      if (validation) {
+        widget.turnsController.turnValidation.value = false;
+        await directionHandler();
+        await footstepsHandler();
+        refreshDegrees = true;
+      }
+    });
+  }
+
+  void startTimer() async {
+    const oneMilSec = const Duration(milliseconds: 80);
+    var time = startTime;
+    widget._timer = Timer.periodic(
+      oneMilSec,
+      (Timer timer) {
+        if (time == 0) {
+          timer.cancel();
+          startTime = 1;
+        } else {
+          startTime--;
+          time--;
+        }
+      },
+    );
   }
 
   Future<void> footstepsHandler() async {
@@ -102,37 +138,86 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
       magnitudeDelta = exactDistance - previousMagnitude;
       previousMagnitude = exactDistance;
 
-      setState(() {
-        if (magnitudeDelta > 3) {
-          if (initial == false) {
-            ongoingSteps++;
-            if (memoPaths.isNotEmpty) {
-              memoSwipeHandler();
-            }
-            if (upcomingPaths.isNotEmpty) {
-              pathHandler();
-            }
-            if (currentPath?.direction == 2) {
-              flutterTts.speak("Turn Left");
-            } else if (currentPath?.direction == 1) {
-              flutterTts.speak("Turn Right");
-            }
-          } else {
-            initial = false;
-            upcomingPaths = [...paths.reversed];
-            currentPath = upcomingPaths.elementAt(0);
-            nextPath = upcomingPaths.elementAt(1);
-            execPaths.add(currentPath!);
-            previousTotalSteps = calPreviousTotalSteps();
-            if (currentPath?.direction == 2) {
-              flutterTts.speak("Turn Left");
-            } else if (currentPath?.direction == 1) {
-              flutterTts.speak("Turn Right");
-            }
-          }
-        }
-      });
+      if (magnitudeDelta > 3 && startTime == 1) {
+        startTimer();
+        stepsController();
+      }
+
+      // setState(() {});
     });
+  }
+
+  // stepsController() {
+  //   setState(() {
+  //     if (initial == false) {
+  //       ongoingSteps++;
+  //       if (memoPaths.isNotEmpty) {
+  //         memoSwipeHandler();
+  //       }
+  //       if (upcomingPaths.isNotEmpty) {
+  //         pathHandler();
+  //       }
+  //       if (currentPath?.direction == 2) {
+  //         flutterTts.speak("Turn Left");
+  //       } else if (currentPath?.direction == 1) {
+  //         flutterTts.speak("Turn Right");
+  //       }
+  //     } else {
+  //       initial = false;
+  //       upcomingPaths = [...paths.reversed];
+  //       currentPath = upcomingPaths.elementAt(0);
+  //       nextPath = upcomingPaths.elementAt(1);
+  //       execPaths.add(currentPath!);
+  //       previousTotalSteps = calPreviousTotalSteps();
+  //       if (currentPath?.direction == 2) {
+  //         flutterTts.speak("Turn Left");
+  //       } else if (currentPath?.direction == 1) {
+  //         flutterTts.speak("Turn Right");
+  //       }
+  //     }
+  //   });
+  // }
+
+  stepsController() async {
+    if (initial == false) {
+      setState(() {
+        ongoingSteps++;
+      });
+
+      if (memoPaths.isNotEmpty) {
+        memoSwipeHandler();
+      }
+      if (upcomingPaths.isNotEmpty) {
+        pathHandler();
+      }
+      if (currentPath?.direction == 2) {
+        flutterTts.speak("Turn Left");
+      } else if (currentPath?.direction == 1) {
+        flutterTts.speak("Turn Right");
+      }
+    } else {
+      initial = false;
+      directionPointer = (360 - degrees(_orientation.x) % 360).abs();
+      upcomingPaths = [...paths.reversed];
+      setState(() {
+        currentPath = upcomingPaths.elementAt(0);
+        nextPath = upcomingPaths.elementAt(1);
+      });
+      execPaths.add(currentPath!);
+      previousTotalSteps = calPreviousTotalSteps();
+      if (currentPath?.direction == 2) {
+        directionHandler();
+        flutterTts.speak("Turn Left");
+      } else if (currentPath?.direction == 1) {
+        directionHandler();
+        flutterTts.speak("Turn Right");
+      }
+
+      // print("initial");
+      // directionPointer = currentDegree;
+      // refreshDegrees = false;
+
+    }
   }
 
   double calculateMagnitude(double x, double y, double z) {
@@ -145,37 +230,44 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
     return total;
   }
 
-  void pathHandler() {
+  void pathHandler() async {
+    // refreshDegrees = true;
     PathItem pathToRemoved;
     if (previousTotalSteps == ongoingSteps) {
-      setState(() {
-        if (upcomingPaths.length > 2) {
-          pathToRemoved = upcomingPaths.first;
-          pastPaths.add(pathToRemoved);
-          upcomingPaths.removeAt(0);
-          currentPath = upcomingPaths.elementAt(0);
-          nextPath = upcomingPaths.elementAt(1);
-          execPaths.add(currentPath!);
-          previousTotalSteps = calPreviousTotalSteps();
-        } else if (upcomingPaths.length == 2) {
-          pathToRemoved = upcomingPaths.first;
-          pastPaths.add(pathToRemoved);
-          upcomingPaths.removeAt(0);
-          currentPath = upcomingPaths.elementAt(0);
-          nextPath = null;
-          execPaths.add(currentPath!);
-          previousTotalSteps = calPreviousTotalSteps();
-        }
-        // else if (upcomingPaths.length == 1) {
-        //   pathToRemoved = upcomingPaths.first;
-        //   pastPaths.add(pathToRemoved);
-        //   upcomingPaths.removeAt(0);
-        //   currentPath = pathToRemoved;
-        //   nextPath = null;
-        //   execPaths.add(currentPath!);
-        //   previousTotalSteps = calPreviousTotalSteps();
-        // }
-      });
+      // setState(() {
+      if (upcomingPaths.length > 2) {
+        pathToRemoved = upcomingPaths.first;
+        pastPaths.add(pathToRemoved);
+        upcomingPaths.removeAt(0);
+        currentPath = upcomingPaths.elementAt(0);
+        nextPath = upcomingPaths.elementAt(1);
+        execPaths.add(currentPath!);
+        previousTotalSteps = calPreviousTotalSteps();
+      } else if (upcomingPaths.length == 2) {
+        pathToRemoved = upcomingPaths.first;
+        pastPaths.add(pathToRemoved);
+        upcomingPaths.removeAt(0);
+        currentPath = upcomingPaths.elementAt(0);
+        nextPath = null;
+        execPaths.add(currentPath!);
+        previousTotalSteps = calPreviousTotalSteps();
+      }
+      if (currentPath?.direction != 0 && ongoingSteps != totalSteps) {
+        directionHandler();
+      } else {
+        widget.turnsController.turnValidation.value = false;
+        await _streamOrientationSubscription.cancel();
+      }
+      // else if (upcomingPaths.length == 1) {
+      //   pathToRemoved = upcomingPaths.first;
+      //   pastPaths.add(pathToRemoved);
+      //   upcomingPaths.removeAt(0);
+      //   currentPath = pathToRemoved;
+      //   nextPath = null;
+      //   execPaths.add(currentPath!);
+      //   previousTotalSteps = calPreviousTotalSteps();
+      // }
+      // });
     }
   }
 
@@ -188,137 +280,273 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
     }
   }
 
+  // void leftState() async {
+  //   if ((currentDegree.truncate() / 10) * 10 == (right.truncate() / 10) * 10) {
+  //     await sensorsHandler(true);
+  //     if (!isDialogShowing) {
+  //       isDialogShowing = true;
+  //       Vibration.vibrate();
+  //       showDialog(
+  //         context: context,
+  //         builder: (BuildContext context) => AlertDialog(
+  //           content: const Text('Please TURN LEFT.'),
+  //           actions: <Widget>[
+  //             TextButton(
+  //               style: TextButton.styleFrom(
+  //                   foregroundColor: Theme.of(context).primaryColor),
+  //               onPressed: () {
+  //                 isDialogShowing = false;
+  //                 widget.turnsController.turnValidation.value = true;
+  //                 Navigator.pop(context, '');
+  //               },
+  //               child: const Text('Okay'),
+  //             ),
+  //           ],
+  //         ),
+  //       ).then((value) {
+  //         isDialogShowing = false;
+  //         // turningHandler();
+  //         widget.turnsController.turnValidation.value = true;
+  //       });
+  //     }
+  //   } else if (currentDegree.toStringAsFixed(0) == left.toStringAsFixed(0)) {
+  //     if (nextPath?.direction == 2) {
+  //       flutterTts.speak("Turn Left");
+  //     } else if (nextPath?.direction == 1) {
+  //       flutterTts.speak("Turn Right");
+  //     }
+  //     setState(() {
+  //       print(currentDegree);
+  //       print(right);
+  //       print(left);
+  //       currentTurns++;
+  //       ongoingSteps++;
+  //       pathHandler();
+  //       refreshDegrees = true;
+  //       // turningHandler();
+  //     });
+  //   }
+  // }
+
+  void leftState() async {
+    if ((currentDegree.truncate() / 10) * 10 == (right.truncate() / 10) * 10) {
+      await sensorsHandler(true);
+      if (!isDialogShowing) {
+        isDialogShowing = true;
+        Vibration.vibrate();
+        showDialog(
+          context: context,
+          builder: (BuildContext context) => AlertDialog(
+            title: const Text('Please TURN LEFT'),
+            content:
+                const Text('Head back to orignal direction before dismiss.'),
+            actions: <Widget>[
+              TextButton(
+                style: TextButton.styleFrom(
+                    foregroundColor: Theme.of(context).primaryColor),
+                onPressed: () {
+                  // isDialogShowing = false;
+                  // widget.turnsController.turnValidation.value = true;
+                  Navigator.pop(context, '');
+                },
+                child: const Text('Okay'),
+              ),
+            ],
+          ),
+        ).then((value) {
+          isDialogShowing = false;
+          refreshDegrees = false;
+          // turningHandler();
+          widget.turnsController.turnValidation.value = true;
+        });
+      }
+    } else if (currentDegree.toStringAsFixed(0) == left.toStringAsFixed(0)) {
+      if (nextPath?.direction == 2) {
+        flutterTts.speak("Turn Left");
+      } else if (nextPath?.direction == 1) {
+        flutterTts.speak("Turn Right");
+      }
+      // setState(() {
+      //   print(currentDegree);
+      //   print(right);
+      //   print(left);
+      //   currentTurns++;
+      //   ongoingSteps++;
+      setState(() {
+        currentTurns++;
+        ongoingSteps++;
+      });
+      pathHandler();
+      refreshDegrees = true;
+      // turningHandler();
+      // });
+    }
+  }
+
+  // void rightState() async {
+  //   if ((currentDegree.truncate() / 10) * 10 == (left.truncate() / 10) * 10) {
+  //     await sensorsHandler(true);
+  //     Vibration.vibrate();
+  //     if (!isDialogShowing) {
+  //       showDialog(
+  //         context: context,
+  //         builder: (BuildContext context) => AlertDialog(
+  //           content: const Text('Please TURN RIGHT.'),
+  //           actions: <Widget>[
+  //             TextButton(
+  //               style: TextButton.styleFrom(
+  //                   foregroundColor: Theme.of(context).primaryColor),
+  //               onPressed: () {
+  //                 isDialogShowing = false;
+  //                 Navigator.pop(context, '');
+  //               },
+  //               child: const Text('Okay'),
+  //             ),
+  //           ],
+  //         ),
+  //       ).then((value) {
+  //         isDialogShowing = false;
+  //         // turningHandler();
+  //         widget.turnsController.turnValidation.value = true;
+  //       });
+  //     }
+  //   } else if (currentDegree.toStringAsFixed(0) == right.toStringAsFixed(0)) {
+  //     if (nextPath?.direction == 2) {
+  //       flutterTts.speak("Turn Left");
+  //     } else if (nextPath?.direction == 1) {
+  //       flutterTts.speak("Turn Right");
+  //     }
+  //     setState(() {
+  //       print(currentDegree);
+  //       print(right);
+  //       print(left);
+  //       currentTurns++;
+  //       ongoingSteps++;
+  //       pathHandler();
+  //       refreshDegrees = true;
+  //       // turningHandler();
+  //     });
+  //   }
+  // }
+
+  void rightState() async {
+    if ((currentDegree.truncate() / 10) * 10 == (left.truncate() / 10) * 10) {
+      await sensorsHandler(true);
+      Vibration.vibrate();
+      if (!isDialogShowing) {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) => AlertDialog(
+            title: const Text('Please TURN RIGHT'),
+            content:
+                const Text('Head back to orignal direction before dismiss.'),
+            actions: <Widget>[
+              TextButton(
+                style: TextButton.styleFrom(
+                    foregroundColor: Theme.of(context).primaryColor),
+                onPressed: () {
+                  // isDialogShowing = false;
+                  Navigator.pop(context, '');
+                },
+                child: const Text('Okay'),
+              ),
+            ],
+          ),
+        ).then((value) {
+          isDialogShowing = false;
+          // turningHandler();
+          refreshDegrees = false;
+          widget.turnsController.turnValidation.value = true;
+        });
+      }
+    } else if (currentDegree.toStringAsFixed(0) == right.toStringAsFixed(0)) {
+      if (nextPath?.direction == 2) {
+        flutterTts.speak("Turn Left");
+      } else if (nextPath?.direction == 1) {
+        flutterTts.speak("Turn Right");
+      }
+
+      // setState(() {
+      //   print(currentDegree);
+      //   print(right);
+      //   print(left);
+      //   currentTurns++;
+      //   ongoingSteps++;
+      setState(() {
+        currentTurns++;
+        ongoingSteps++;
+      });
+      pathHandler();
+      refreshDegrees = true;
+      //   // turningHandler();
+      // });
+    }
+  }
+
   Future<void> directionHandler() async {
     _streamOrientationSubscription =
-        motionSensors.orientation.listen((OrientationEvent event) {
-      setState(() {
-        _orientation.setValues(event.yaw, event.pitch, event.roll);
-        if (initial || refreshDegrees) {
-          directionPointer = 360 - degrees(_orientation.x) % 360;
+        motionSensors.orientation.listen((OrientationEvent event) async {
+      _orientation.setValues(event.yaw, event.pitch, event.roll);
+      if (await motionSensors.isOrientationAvailable()) {
+        // currentDegree = (360 - degrees(_orientation.x) % 360).abs();
+        if (refreshDegrees) {
+          // directionPointer = currentDegree;
+          directionPointer = (360 - degrees(_orientation.x) % 360).abs();
           refreshDegrees = false;
         }
-        currentDegree = 360 - degrees(_orientation.x) % 360;
+        currentDegree = (360 - degrees(_orientation.x) % 360).abs();
 
         if (directionPointer < 39) {
-          left = directionPointer - 40 + 360;
-          right = directionPointer + 40;
+          left = (directionPointer - 40 + 360).abs();
+          right = (directionPointer + 40).abs();
         } else if (directionPointer > 319) {
-          left = directionPointer - 40;
-          right = directionPointer + 40 - 360;
+          left = (directionPointer - 40).abs();
+          right = (directionPointer + 40 - 360).abs();
         } else {
-          left = directionPointer - 40;
-          right = directionPointer + 40;
+          left = (directionPointer - 40).abs();
+          right = (directionPointer + 40).abs();
         }
 
-        if (currentPath?.direction == 2) {
-          if (currentDegree.toStringAsFixed(0) == right.toStringAsFixed(0)) {
-            sensorsHandler(true);
-            if (!isDialogShowing) {
-              isDialogShowing = true;
-              Vibration.vibrate();
-              showDialog(
-                context: context,
-                builder: (BuildContext context) => AlertDialog(
-                  content: const Text('Please TURN LEFT.'),
-                  actions: <Widget>[
-                    TextButton(
-                      style: TextButton.styleFrom(
-                          foregroundColor: Theme.of(context).primaryColor),
-                      onPressed: () {
-                        refreshDegrees = true;
-                        isDialogShowing = false;
-                        Navigator.pop(context, '');
-                      },
-                      child: const Text('Okay'),
-                    ),
-                  ],
-                ),
-              ).then((value) {
-                print(value);
-                if (value != '') {
-                  turningHandler();
-                }
-              });
-            }
-          } else if (currentDegree.toStringAsFixed(0) ==
-              left.toStringAsFixed(0)) {
-            if (nextPath?.direction == 2) {
-              flutterTts.speak("Turn Left");
-            } else if (nextPath?.direction == 1) {
-              flutterTts.speak("Turn Right");
-            }
-            setState(() {
-              currentTurns++;
-              ongoingSteps++;
-              pathHandler();
-              refreshDegrees = true;
-            });
-          }
-        } else if (currentPath?.direction == 1) {
-          if (currentDegree.toStringAsFixed(0) == left.toStringAsFixed(0)) {
-            sensorsHandler(true);
-            Vibration.vibrate();
-            if (!isDialogShowing) {
-              showDialog(
-                context: context,
-                builder: (BuildContext context) => AlertDialog(
-                  content: const Text('Please TURN RIGHT.'),
-                  actions: <Widget>[
-                    TextButton(
-                      style: TextButton.styleFrom(
-                          foregroundColor: Theme.of(context).primaryColor),
-                      onPressed: () {
-                        refreshDegrees = true;
-                        isDialogShowing = false;
-                        Navigator.pop(context, '');
-                      },
-                      child: const Text('Okay'),
-                    ),
-                  ],
-                ),
-              ).then((value) {
-                print(value);
-                if (value != '') {
-                  turningHandler();
-                }
-              });
-            }
-          } else if (currentDegree.toStringAsFixed(0) ==
-              right.toStringAsFixed(0)) {
-            if (nextPath?.direction == 2) {
-              flutterTts.speak("Turn Left");
-            } else if (nextPath?.direction == 1) {
-              flutterTts.speak("Turn Right");
-            }
-            setState(() {
-              currentTurns++;
-              ongoingSteps++;
-              pathHandler();
-              refreshDegrees = true;
-            });
-          }
-        }
+        print('dP:$directionPointer');
+        print('current: $currentDegree');
+        print('left:$left');
+        print('right:$right');
+      }
+      if (currentPath?.direction == 2) {
+        leftState();
+      } else if (currentPath?.direction == 1) {
+        rightState();
+      }
 
-        if (ongoingSteps == totalSteps && currentTurns == totalTurns) {
-          playBtnHandler(true);
-          flutterTts.speak("Reach Destination");
-          isEnd = true;
-          currentPath = null;
-          PathItem pathToRemoved = upcomingPaths.first;
-          pastPaths.add(pathToRemoved);
-          upcomingPaths.removeAt(0);
-          // execPaths.add(currentPath!);
-          // previousTotalSteps = calPreviousTotalSteps();
-        } else if (ongoingSteps == totalSteps) {
-          playBtnHandler(true);
-          flutterTts.speak("Reach Destination");
-          isEnd = true;
-          currentPath = null;
-          PathItem pathToRemoved = upcomingPaths.first;
-          pastPaths.add(pathToRemoved);
-          upcomingPaths.removeAt(0);
-          // execPaths.add(currentPath!);
-          // previousTotalSteps = calPreviousTotalSteps();
+      // if (ongoingSteps == totalSteps && currentTurns == totalTurns) {
+      //   await sensorsHandler(true);
+      //   flutterTts.speak("Reach Destination");
+      //   isEnd = true;
+      //   currentPath = null;
+      //   PathItem pathToRemoved = upcomingPaths.first;
+      //   pastPaths.add(pathToRemoved);
+      //   upcomingPaths.removeAt(0);
+      // execPaths.add(currentPath!);
+      // previousTotalSteps = calPreviousTotalSteps();
+      // }
+      // print('${ongoingSteps == totalSteps}yeayeayea1');
+      // print('${isEnd == true}yeayeayea2');
+      if (ongoingSteps == totalSteps && isEnd == false) {
+        print('yeayeayea');
+        playBtnHandler(true);
+        flutterTts.speak("Reach Destination");
+        isEnd = true;
+        currentPath = null;
+        // lastStep = !lastStep;
+        sensorsHandler(true);
+        Get.deleteAll();
+        // PathItem pathToRemoved = upcomingPaths.first;
+        // pastPaths.add(pathToRemoved);
+        // upcomingPaths.removeAt(0);
+        // execPaths.add(currentPath!);
+        // previousTotalSteps = calPreviousTotalSteps();
+        if (currentTurns != totalTurns) {
+          // sensorsHandler(true);
           showDialog(
             context: context,
             builder: (BuildContext context) => AlertDialog(
@@ -337,7 +565,7 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
             ),
           );
         }
-      });
+      }
     });
   }
 
@@ -345,35 +573,43 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
     flutterTts = FlutterTts();
     flutterTts.setLanguage('en');
     flutterTts.setSpeechRate(0.5);
-    flutterTts.setVolume(0.5);
+    flutterTts.setVolume(0.7);
   }
 
-  void sensorsHandler(bool isPause) {
+  Future<void> sensorsHandler(bool isPause) async {
     if (isPause) {
-      _streamAccelerometerSubscription.cancel();
-      _streamOrientationSubscription.cancel();
+      widget.turnsController.turnValidation.value = false;
+      await _streamOrientationSubscription.cancel();
+      await _streamAccelerometerSubscription.cancel();
     } else {
-      directionHandler();
-      footstepsHandler();
+      if (currentPath?.direction != 0) {
+        widget.turnsController.turnValidation.value = true;
+      } else if (currentPath?.direction == 0) {
+        widget.turnsController.turnValidation.value = true;
+        await _streamOrientationSubscription.cancel();
+      }
     }
   }
 
-  void turningHandler() {
-    refreshDegrees = true; //to set the directionPointer to new degree
-    isDialogShowing = false;
-    directionHandler();
-    footstepsHandler();
-  }
+  // void turningHandler() {
+  //   refreshDegrees = true; //to set the directionPointer to new degree
+  //   isDialogShowing = false;
+  //   directionHandler();
+  //   footstepsHandler();
+  // }
 
-  void playBtnHandler(bool isPause) {
+  void playBtnHandler(bool isPause) async {
     setState(() {
       this.isPause = isPause;
-      sensorsHandler(isPause);
     });
+    await sensorsHandler(isPause);
   }
 
   void ttsBtnHandler(bool isStopped) {
-    this.isStopped = isStopped;
+    setState(() {
+      this.isStopped = isStopped;
+    });
+
     if (isStopped) {
       flutterTts.setVolume(0);
     } else {
@@ -381,14 +617,17 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
     }
   }
 
-  void directionBtnHandler() {
+  void directionBtnHandler() async {
     if (ongoingSteps != totalSteps) {
-      sensorsHandler(false);
+      await sensorsHandler(false);
     }
   }
 
   Future<bool> showDiscardDialog() async {
     sensorsHandler(true);
+    // Future.delayed(Duration(milliseconds: 50)).then(
+    //   (value) async => await sensorsHandler(true),
+    // );
     showDialog(
         context: context,
         builder: (BuildContext context) => CustomizedAlertDialog(
@@ -399,19 +638,22 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
                 Navigator.pop(context, true);
               },
               noOnPressed: () {
-                sensorsHandler(false);
                 Navigator.pop(context, false);
               },
-            )).then((value) {
+            )).then((value) async {
       if (value != null) {
-        if (!value) {
-          sensorsHandler(false);
-        } else {
-          sensorsHandler(true);
+        if (value == false && ongoingSteps != totalSteps) {
+          await sensorsHandler(false);
+          return false;
+        } else if (value == true) {
+          await sensorsHandler(true);
+          Get.deleteAll();
           Navigator.pop(context);
+          return true;
         }
-      } else {
-        sensorsHandler(false);
+      } else if (value == null && ongoingSteps != totalSteps) {
+        await sensorsHandler(false);
+        return false;
       }
     });
     return false;
@@ -430,7 +672,7 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
     final mediaQuery = MediaQuery.of(context).size;
 
     return WillPopScope(
-      onWillPop: showDiscardDialog,
+      onWillPop: (ongoingSteps == totalSteps) ? null : showDiscardDialog,
       child: Scaffold(
           appBar: AppBar(title: Text(data.title)),
           body: Padding(
@@ -471,6 +713,7 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
                   currentTurns: currentTurns,
                 ),
                 TraceBody(
+                  //update
                   mediaQuery: mediaQuery,
                   memoPaths: memoPaths,
                   totalSteps: totalSteps,
@@ -482,9 +725,9 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
                   pastPaths: pastPaths,
                   sensorsHandler: sensorsHandler,
                   isPause: isPause,
-                  playBtnHandler: playBtnHandler,
+                  playBtnHandler: playBtnHandler, //update
                   isEnd: isEnd,
-                  ttsBtnHandler: ttsBtnHandler,
+                  ttsBtnHandler: ttsBtnHandler, //update
                   isStopped: isStopped,
                   directionBtnHandler: directionBtnHandler,
                 )
@@ -701,8 +944,10 @@ class TraceBottom extends StatelessWidget {
           splashRadius: 18,
           iconSize: 27,
           onPressed: () {
-            isStopped = !isStopped;
-            ttsBtnHandler(isStopped);
+            if (!isEnd) {
+              isStopped = !isStopped;
+              ttsBtnHandler(isStopped);
+            }
           },
           icon: Icon(
             isStopped ? Icons.volume_off : Icons.volume_up_rounded,
@@ -721,7 +966,11 @@ class TraceBottom extends StatelessWidget {
           },
           backgroundColor: Theme.of(context).primaryColorDark,
           child: Icon(
-            isPause ? Icons.play_arrow : Icons.pause_rounded,
+            isEnd
+                ? Icons.play_arrow
+                : isPause
+                    ? Icons.play_arrow
+                    : Icons.pause_rounded,
             size: 40,
           ),
         ),
@@ -733,8 +982,8 @@ class TraceBottom extends StatelessWidget {
           splashRadius: 18,
           // iconSize: mediaQuery.width / 15,
           iconSize: 27,
-          onPressed: () {
-            sensorsHandler(true);
+          onPressed: () async {
+            await sensorsHandler(true);
 
             Navigator.of(context).pushNamed(DirectionScreen.routeName,
                 arguments: {

@@ -12,6 +12,7 @@ import 'package:puffway/screens/start_record_screen.dart';
 import 'package:uuid/uuid.dart';
 import 'package:path/path.dart';
 
+import '../providers/appTheme.dart';
 import '../providers/path.dart';
 
 class PathInfoScreen extends StatefulWidget {
@@ -64,7 +65,7 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
     setState(() {});
   }
 
-  void _saveForm() async {
+  void _saveForm(context) async {
     final isValid = _form.currentState?.validate();
     if (!isValid!) {
       return;
@@ -92,7 +93,7 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
               imageDocPath: folderPath,
               // imageDocTitle: folderName,
               paths: allPaths);
-          uploadToFirestore(deviceId, newPathway);
+          uploadToFirestore(deviceId, newPathway, context);
         });
       } else {
         newPathway = Pathway(
@@ -100,7 +101,7 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
             title: _titleController.text,
             description: _descriptionController.text,
             paths: allPaths);
-        uploadToFirestore(deviceId, newPathway);
+        uploadToFirestore(deviceId, newPathway, context);
       }
     } else {
       //title only
@@ -113,19 +114,19 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
               // imageDocTitle: folderName,
               paths: allPaths);
 
-          uploadToFirestore(deviceId, newPathway);
+          uploadToFirestore(deviceId, newPathway, context);
         });
       } else {
         newPathway = Pathway(
             timestamp: Timestamp.now(),
             title: _titleController.text,
             paths: allPaths);
-        uploadToFirestore(deviceId, newPathway);
+        uploadToFirestore(deviceId, newPathway, context);
       }
     }
   }
 
-  void uploadToFirestore(String? deviceId, Pathway newPathway) {
+  void uploadToFirestore(String? deviceId, Pathway newPathway, context) {
     db
         .collection("deviceID")
         .doc(deviceId)
@@ -135,6 +136,30 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
             toFirestore: (Pathway pathwayItem, options) =>
                 pathwayItem.ToFirestore())
         .add(newPathway);
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        content: const Text('Save Successfully'),
+        actions: <Widget>[
+          TextButton(
+            style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).primaryColor),
+            onPressed: () {
+              Provider.of<PathItems>(this.context, listen: false)
+                  .clearAllPath();
+              // Navigator.pop(context, "save");
+
+              Navigator.popUntil(context, ModalRoute.withName('/'));
+            },
+            child: const Text('Okay'),
+          ),
+        ],
+      ),
+    ).then((value) {
+      Provider.of<PathItems>(this.context, listen: false).clearAllPath();
+      Navigator.popUntil(context, ModalRoute.withName('/'));
+    });
   }
 
   Future<void> createFolder(String uuid) async {
@@ -173,7 +198,7 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
     return GestureDetector(
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       child: Scaffold(
-        appBar: AppBar(title: const Text('Path Information')),
+        appBar: AppBar(title: const Text('Pathway Information')),
         body: Form(
             key: _form,
             child: ListView(
@@ -185,14 +210,16 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
                   focusNode: _titleFocus,
                   controller: _titleController,
                   decoration: InputDecoration(
-                    labelText: "Path Title",
+                    labelText: "Pathway Title",
                     floatingLabelStyle: MaterialStateTextStyle.resolveWith(
                         (Set<MaterialState> states) {
                       final Color? color = states.contains(MaterialState.error)
                           ? Theme.of(context).errorColor
                           : _titleFocus.hasFocus
                               ? Theme.of(context).primaryColor
-                              : null;
+                              : Provider.of<AppTheme>(context).isDarkMode
+                                  ? Colors.grey
+                                  : null;
                       return TextStyle(color: color);
                     }),
                   ),
@@ -219,7 +246,9 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
                           ? Theme.of(context).errorColor
                           : _descriptionFocus.hasFocus
                               ? Theme.of(context).primaryColor
-                              : null;
+                              : Provider.of<AppTheme>(context).isDarkMode
+                                  ? Colors.grey
+                                  : null;
                       return TextStyle(color: color);
                     }),
                     border: const OutlineInputBorder(),
@@ -238,40 +267,8 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
                         padding: MaterialStateProperty.all(
                             const EdgeInsets.only(top: 10, bottom: 10))),
                     onPressed: () {
-                      _saveForm();
+                      _saveForm(context);
                       FocusManager.instance.primaryFocus?.unfocus();
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) => AlertDialog(
-                          content: const Text('Save Successfully'),
-                          actions: <Widget>[
-                            TextButton(
-                              style: TextButton.styleFrom(
-                                  foregroundColor:
-                                      Theme.of(context).primaryColor),
-                              onPressed: () {
-                                Provider.of<PathItems>(this.context,
-                                        listen: false)
-                                    .clearAllPath();
-                                Navigator.pop(context, "save");
-
-                                // Navigator.popUntil(
-                                //     context, ModalRoute.withName('/'));
-                              },
-                              child: const Text('Okay'),
-                            ),
-                          ],
-                        ),
-                      ).then((value) {
-                        if (value != null) {
-                          if (value == "save") {
-                            print("pathinfosave");
-                            Navigator.pop(context, "save");
-                          }
-                        } else {
-                          Navigator.pop(context);
-                        }
-                      });
                     },
                     child: const Text(
                       "Save",

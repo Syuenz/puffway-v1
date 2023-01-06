@@ -9,6 +9,7 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart' as syspaths;
 import 'package:provider/provider.dart';
 import 'package:puffway/screens/recording_screen.dart';
+import '../providers/appTheme.dart';
 import '../widgets/customized_alert_dialog.dart';
 import '../providers/path.dart';
 import '../widgets/image_dialog.dart';
@@ -158,7 +159,7 @@ class _PathMemoScreenState extends State<PathMemoScreen> {
       child: GestureDetector(
         onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
         child: Scaffold(
-          appBar: AppBar(title: const Text('Path Memo')),
+          appBar: AppBar(title: const Text('Pathway Memo')),
           body: Form(
               child: ListView(
             padding: const EdgeInsets.symmetric(horizontal: 30),
@@ -263,7 +264,9 @@ class _PathMemoScreenState extends State<PathMemoScreen> {
                         ? Theme.of(context).errorColor
                         : _descriptionFocus.hasFocus
                             ? Theme.of(context).primaryColor
-                            : null;
+                            : Provider.of<AppTheme>(context).isDarkMode
+                                ? Colors.grey
+                                : null;
                     return TextStyle(color: color);
                   }),
                   border: const OutlineInputBorder(),

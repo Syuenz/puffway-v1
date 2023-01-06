@@ -43,7 +43,7 @@ class MyApp extends StatelessWidget {
       ],
       child: Consumer<AppTheme>(
         builder: (context, theme, _) => MaterialApp(
-          title: 'Flutter Demo',
+          debugShowCheckedModeBanner: false,
           theme: theme.getTheme(),
           initialRoute: '/',
           routes: {

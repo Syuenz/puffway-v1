@@ -58,20 +58,12 @@ dependencies:
   flutter_tts: ^3.6.3
   shared_preferences: ^2.0.15
   flutter_native_splash: ^2.2.16
+  get: ^4.6.5
+  scroll_to_index: any
 
 
 dev_dependencies:
   flutter_launcher_icons: "^0.11.0"
-
-flutter_icons:
-  android: "launcher_icon"
-  ios: true
-  image_path: "assets/images/puffway.png"
-
-flutter_native_splash:
-  image: "assets/images/splash-puffway.png"
-  color: "#F454CD"
-
   flutter_test:
     sdk: flutter
 
@@ -92,14 +84,14 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
-  fonts:
-    - family: Helvetica
-      fonts:
-        - asset: assets/fonts/Helvetica-Regular.ttf
-        - asset: assets/fonts/Helvetica-Bold.ttf
+  # fonts:
+  #   - family: Helvetica
+  #     fonts:
+  #       - asset: assets/fonts/Helvetica-Regular.ttf
+  #       - asset: assets/fonts/Helvetica-Bold.ttf
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
+  assets:
+    - assets/images/puffway.png
   #   - images/a_dot_ham.jpeg
 
 
@@ -127,7 +119,16 @@ flutter:
     #       weight: 700
   #
 
+#app icon
+flutter_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/images/puffway.png"
 
+#splash screen
+flutter_native_splash:
+  image: "assets/images/splash-puffway.png"
+  color: "#F454CD"
 
       
   # For details regarding fonts from package dependencies,
