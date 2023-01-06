@@ -2,13 +2,11 @@ import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:platform_device_id/platform_device_id.dart';
 import 'package:provider/provider.dart';
 import 'package:puffway/providers/pathway.dart';
-import 'package:puffway/screens/start_record_screen.dart';
 import 'package:uuid/uuid.dart';
 import 'package:path/path.dart';
 
@@ -36,8 +34,8 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
 
   //uuid
   var uuid = Uuid();
-  var folderName;
-  var folderPath;
+  var folderName = "";
+  var folderPath = "";
 
   //firestore
   var db = FirebaseFirestore.instance;
@@ -91,7 +89,6 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
               title: _titleController.text,
               description: _descriptionController.text,
               imageDocPath: folderPath,
-              // imageDocTitle: folderName,
               paths: allPaths);
           uploadToFirestore(deviceId, newPathway, context);
         });
@@ -111,7 +108,6 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
               timestamp: Timestamp.now(),
               title: _titleController.text,
               imageDocPath: folderPath,
-              // imageDocTitle: folderName,
               paths: allPaths);
 
           uploadToFirestore(deviceId, newPathway, context);
@@ -148,8 +144,6 @@ class _PathInfoScreenState extends State<PathInfoScreen> {
             onPressed: () {
               Provider.of<PathItems>(this.context, listen: false)
                   .clearAllPath();
-              // Navigator.pop(context, "save");
-
               Navigator.popUntil(context, ModalRoute.withName('/'));
             },
             child: const Text('Okay'),

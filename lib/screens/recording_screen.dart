@@ -62,7 +62,6 @@ class _RecordingScreenState extends State<RecordingScreen> {
   var isDialogShowing = false;
 
   //scroller
-  // ScrollController _scrollController = ScrollController();
   AutoScrollController _scrollController = AutoScrollController();
 
   @override
@@ -128,15 +127,12 @@ class _RecordingScreenState extends State<RecordingScreen> {
               no: "Cancel",
               yesOnPressed: () {
                 direction = 1; //left
-                // directionPointer = 0.0;
                 addPathsToGlobal("left");
-                // turningHandler();
                 widget.turnsController.turnValidation.value = true;
                 Navigator.pop(context, '');
                 return;
               },
               noOnPressed: () {
-                // turningHandler();
                 widget.turnsController.turnValidation.value = true;
                 Navigator.pop(context, '');
                 return;
@@ -144,15 +140,10 @@ class _RecordingScreenState extends State<RecordingScreen> {
             )).then((value) {
       isDialogShowing = false;
       if (value != '') {
-        // turningHandler();
         widget.turnsController.turnValidation.value = true;
         return;
       }
     });
-    // if (!isDialogShowing) {
-    //   isDialogShowing = true;
-
-    // }
   }
 
   void rightState() async {
@@ -168,15 +159,12 @@ class _RecordingScreenState extends State<RecordingScreen> {
               no: "Cancel",
               yesOnPressed: () {
                 direction = 1; //left
-                // directionPointer = 0.0;
                 addPathsToGlobal("right");
-                // turningHandler();
                 widget.turnsController.turnValidation.value = true;
                 Navigator.pop(context, '');
                 return;
               },
               noOnPressed: () {
-                // turningHandler();
                 widget.turnsController.turnValidation.value = true;
                 Navigator.pop(context, '');
                 return;
@@ -184,15 +172,10 @@ class _RecordingScreenState extends State<RecordingScreen> {
             )).then((value) {
       isDialogShowing = false;
       if (value != '') {
-        // turningHandler();
         widget.turnsController.turnValidation.value = true;
         return;
       }
     });
-    // if (!isDialogShowing) {
-    //   isDialogShowing = true;
-
-    // }
   }
 
   Future<void> directionHandler() async {
@@ -200,7 +183,6 @@ class _RecordingScreenState extends State<RecordingScreen> {
         motionSensors.orientation.listen((OrientationEvent event) async {
       _orientation.setValues(event.yaw, event.pitch, event.roll);
       if (await motionSensors.isOrientationAvailable()) {
-        // currentDegree = (360 - degrees(_orientation.x) % 360).abs();
         if (refreshDegrees) {
           // directionPointer = currentDegree;
           directionPointer = (360 - degrees(_orientation.x) % 360).abs();
@@ -240,14 +222,11 @@ class _RecordingScreenState extends State<RecordingScreen> {
       } else {
         direction = 0; //straight
       }
-      // setState(() {
-
-      // });
     });
   }
 
   void startTimer() async {
-    const oneMilSec = const Duration(milliseconds: 80);
+    const oneMilSec = Duration(milliseconds: 80);
     var time = startTime;
     widget._timer = Timer.periodic(
       oneMilSec,
@@ -261,11 +240,6 @@ class _RecordingScreenState extends State<RecordingScreen> {
         }
       },
     );
-    // if (startTime == 0) {
-    //   return true;
-    // } else {
-    //   return false;
-    // }
   }
 
   Future<void> footstepsHandler() async {
@@ -279,10 +253,6 @@ class _RecordingScreenState extends State<RecordingScreen> {
         if (initial == false) {
           startTimer();
           steps.value++;
-
-          // setState(() {
-          //   steps++;
-          // });
         } else {
           directionPointer = (360 - degrees(_orientation.x) % 360).abs();
           initial = false;
@@ -308,13 +278,6 @@ class _RecordingScreenState extends State<RecordingScreen> {
     }
   }
 
-  // void turningHandler() {
-  //   setState(() {
-  //     refreshDegrees = true; //to set the directionPointer to new degree
-  //     isDialogShowing = false;
-  //   });
-  // }
-
   void memoSavedHandler() {
     //refresh the current steps
     steps.value = 0;
@@ -336,9 +299,6 @@ class _RecordingScreenState extends State<RecordingScreen> {
 
   void resetSteps() {
     steps.value = 0;
-    // setState(() {
-    //   steps = 0;
-    // });
   }
 
   Future<bool> showDiscardDialog() async {
@@ -399,47 +359,43 @@ class _RecordingScreenState extends State<RecordingScreen> {
             padding: EdgeInsets.all(20),
             child: Column(
               children: [
-                Container(
-                  child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const Spacer(
-                          flex: 3,
-                        ),
-                        FloatingActionButton(
-                          heroTag: "minusbtn",
-                          onPressed: () {
-                            steps.value <= 0 ? steps.value = 0 : steps.value--;
-                          },
-                          // backgroundColor: Colors.amber,
-                          child: const Icon(Icons.remove),
-                        ),
-                        const Spacer(
-                          flex: 1,
-                        ),
-                        Obx(() => Text(
-                              "${steps.value}",
-                              style: TextStyle(
-                                  fontSize: 80 / 720 * mediaQuery.size.height,
-                                  fontWeight: FontWeight.w400),
-                            )),
-                        const Spacer(
-                          flex: 1,
-                        ),
-                        FloatingActionButton(
-                          heroTag: "plusbtn",
-                          onPressed: () {
-                            steps.value++;
-                          },
-                          // backgroundColor: Colors.amber,
-                          child: const Icon(Icons.add),
-                        ),
-                        const Spacer(
-                          flex: 3,
-                        ),
-                      ]),
-                ),
+                Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const Spacer(
+                        flex: 3,
+                      ),
+                      FloatingActionButton(
+                        heroTag: "minusbtn",
+                        onPressed: () {
+                          steps.value <= 0 ? steps.value = 0 : steps.value--;
+                        },
+                        child: const Icon(Icons.remove),
+                      ),
+                      const Spacer(
+                        flex: 1,
+                      ),
+                      Obx(() => Text(
+                            "${steps.value}",
+                            style: TextStyle(
+                                fontSize: 80 / 720 * mediaQuery.size.height,
+                                fontWeight: FontWeight.w400),
+                          )),
+                      const Spacer(
+                        flex: 1,
+                      ),
+                      FloatingActionButton(
+                        heroTag: "plusbtn",
+                        onPressed: () {
+                          steps.value++;
+                        },
+                        child: const Icon(Icons.add),
+                      ),
+                      const Spacer(
+                        flex: 3,
+                      ),
+                    ]),
                 Text(
                   "Current Steps",
                   style: TextStyle(fontSize: 16 / 720 * mediaQuery.size.height),
@@ -453,7 +409,7 @@ class _RecordingScreenState extends State<RecordingScreen> {
                           color: Provider.of<AppTheme>(context, listen: true)
                                   .isDarkMode
                               ? Colors.grey
-                              : Color.fromARGB(255, 255, 186, 229),
+                              : const Color.fromARGB(255, 255, 186, 229),
                           borderRadius: BorderRadius.circular(20)),
                       child: Consumer<PathItems>(builder: (ctx, path, _) {
                         List<PathItem> allPaths =
@@ -467,7 +423,7 @@ class _RecordingScreenState extends State<RecordingScreen> {
 
                         return ListView(
                           controller: _scrollController,
-                          padding: EdgeInsets.only(top: 10, bottom: 10),
+                          padding: const EdgeInsets.only(top: 10, bottom: 10),
                           scrollDirection: Axis.vertical,
                           children: [
                             ...paths.map((path) {
@@ -491,10 +447,6 @@ class _RecordingScreenState extends State<RecordingScreen> {
                               );
                             })
                           ],
-                          // itemCount: paths.length,
-                          // itemBuilder: (BuildContext ctx, index) {
-
-                          // }
                         );
 
                         // return ListView.builder(
@@ -617,12 +569,10 @@ class RecordingBottom extends StatelessWidget {
           heroTag: "savebtn",
           onPressed: () {
             sensorsHandler(true);
-            print('save11');
             if (paths.isNotEmpty && steps == 0) {
               Navigator.of(context)
                   .pushNamed(PathInfoScreen.routeName)
                   .then((value) {
-                print(value);
                 if (value != null) {
                   if (value == "save") {
                     sensorsHandler(true);
@@ -643,7 +593,6 @@ class RecordingBottom extends StatelessWidget {
               Navigator.of(context)
                   .pushNamed(PathInfoScreen.routeName)
                   .then((value) {
-                print(value);
                 sensorsHandler(false);
                 // if (value != null) {
                 //   if (value == "save") {

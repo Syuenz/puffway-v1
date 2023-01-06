@@ -8,7 +8,7 @@ import 'package:puffway/screens/path_overview_screen.dart';
 import 'package:intl/intl.dart';
 
 class HistoryScreen extends StatefulWidget {
-  HistoryScreen({super.key});
+  const HistoryScreen({super.key});
 
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
@@ -113,7 +113,7 @@ class HistoryItem extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Padding(
-              padding: EdgeInsets.all(5),
+              padding: const EdgeInsets.all(5),
               child: Icon(
                 Icons.directions_walk,
                 color: Theme.of(context).primaryColorDark,
@@ -148,7 +148,7 @@ class HistoryItem extends StatelessWidget {
             ),
           ],
         ),
-        contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+        contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
         onTap: () {
           Navigator.of(context).pushNamed(
             PathOverviewScreen.routeName,

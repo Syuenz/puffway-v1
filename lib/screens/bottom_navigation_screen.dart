@@ -25,7 +25,7 @@ class _BottomNavigationScreenState extends State<BottomNavigationScreen> {
         'title': 'History',
       },
       {
-        'page': StartRecordScreen(),
+        'page': const StartRecordScreen(),
         'title': 'Puffway',
       },
       {
@@ -54,26 +54,26 @@ class _BottomNavigationScreenState extends State<BottomNavigationScreen> {
         backgroundColor: Provider.of<AppTheme>(context, listen: true).isDarkMode
             ? Colors.black
             : Theme.of(context).primaryColor,
-        unselectedItemColor: Color.fromARGB(133, 255, 255, 255),
-        selectedItemColor: Color.fromARGB(255, 255, 255, 255),
+        unselectedItemColor: const Color.fromARGB(133, 255, 255, 255),
+        selectedItemColor: const Color.fromARGB(255, 255, 255, 255),
         currentIndex: _selectedPageIndex,
         items: [
           BottomNavigationBarItem(
             backgroundColor: Theme.of(context).primaryColor,
-            icon: Icon(Icons.bookmark_outline),
-            activeIcon: Icon(Icons.bookmark),
+            icon: const Icon(Icons.bookmark_outline),
+            activeIcon: const Icon(Icons.bookmark),
             label: 'History',
           ),
           BottomNavigationBarItem(
             backgroundColor: Theme.of(context).primaryColor,
-            icon: Icon(Icons.navigation_outlined),
-            activeIcon: Icon(Icons.navigation),
+            icon: const Icon(Icons.navigation_outlined),
+            activeIcon: const Icon(Icons.navigation),
             label: 'Record',
           ),
           BottomNavigationBarItem(
             backgroundColor: Theme.of(context).primaryColor,
-            icon: Icon(Icons.settings_outlined),
-            activeIcon: Icon(Icons.settings),
+            icon: const Icon(Icons.settings_outlined),
+            activeIcon: const Icon(Icons.settings),
             label: 'Settings',
           ),
         ],

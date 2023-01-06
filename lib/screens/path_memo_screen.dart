@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:ui' as ui;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -107,12 +106,9 @@ class _PathMemoScreenState extends State<PathMemoScreen> {
     }
     final appDir = await syspaths.getApplicationDocumentsDirectory();
     final fileName = path.basename(imageFile.path);
-    // print(appDir);
-    // print(fileName);
 
     File savedImage = await File(imageFile.path)
         .copy('${appDir.path}/$fileName'); //add path id in front of file name
-    // widget.onSelectImage(savedImage);
 
     final decodedImage =
         await decodeImageFromList(savedImage.readAsBytesSync());
@@ -120,7 +116,6 @@ class _PathMemoScreenState extends State<PathMemoScreen> {
 
     setState(() {
       _storedImage = savedImage.path;
-      // print(_storedImage);
     });
   }
 
@@ -179,9 +174,9 @@ class _PathMemoScreenState extends State<PathMemoScreen> {
                           : _takePicture();
                     },
                     child: Container(
-                        margin: EdgeInsets.only(top: 8, right: 8),
+                        margin: const EdgeInsets.only(top: 8, right: 8),
                         padding: EdgeInsets.zero,
-                        constraints: BoxConstraints(),
+                        constraints: const BoxConstraints(),
                         height: _storedImage == null
                             ? mediaQuery.height * 0.2
                             : (_isHorizontal
@@ -203,7 +198,8 @@ class _PathMemoScreenState extends State<PathMemoScreen> {
                                 child: Icon(
                                   Icons.camera_alt_rounded,
                                   size: mediaQuery.height * 0.05,
-                                  color: Color.fromARGB(255, 131, 131, 131),
+                                  color:
+                                      const Color.fromARGB(255, 131, 131, 131),
                                 ),
                               )),
                   ),

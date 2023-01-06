@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:avatar_glow/avatar_glow.dart';
 
 import '../screens/recording_screen.dart';
-import '../screens/path_info_screen.dart';
-import '../screens/path_memo_screen.dart';
 
 class StartRecordScreen extends StatelessWidget {
   const StartRecordScreen({super.key});
@@ -30,11 +28,10 @@ class StartRecordScreen extends StatelessWidget {
           )),
       AvatarGlow(
           endRadius: 90,
-          glowColor: Color.fromARGB(255, 255, 0, 0),
+          glowColor: const Color.fromARGB(255, 255, 0, 0),
           showTwoGlows: true,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(100),
-            // borderRadius: BorderRadius.only(),
             child: Material(
               child: InkWell(
                 onTap: () {

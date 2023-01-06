@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/appTheme.dart';
 
 class SettingsScreen extends StatefulWidget {
-  SettingsScreen({super.key});
+  const SettingsScreen({super.key});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -17,20 +17,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final mediaQuery = MediaQuery.of(context).size;
 
     return Scaffold(
-      // backgroundColor: Colors.grey[200],
       body: Padding(
         padding: const EdgeInsets.all(10),
         child: Center(
           child: Column(
             children: [
               const SizedBox(height: 20),
-              Container(
+              SizedBox(
                   height: mediaQuery.height * 0.1,
                   child: Image.asset("assets/images/puffway.png")),
               const SizedBox(
                 height: 8,
               ),
-              Text("Puffway"),
+              const Text("Puffway"),
               const SizedBox(
                 height: 15,
               ),
@@ -51,7 +50,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         Text(
                           dark ? "Dark Mode" : "Light Mode",
-                          style: TextStyle(fontSize: 18),
+                          style: const TextStyle(fontSize: 18),
                         ),
                       ]),
                       Switch(

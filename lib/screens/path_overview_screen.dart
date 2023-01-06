@@ -6,7 +6,6 @@ import 'package:puffway/screens/start_trace_screen.dart';
 import 'package:puffway/widgets/reversed_path_info_item.dart';
 import '../providers/appTheme.dart';
 import '../providers/path.dart';
-import '../widgets/path_info_item.dart';
 
 class PathOverviewScreen extends StatelessWidget {
   static const routeName = "/path-overview";
@@ -111,10 +110,6 @@ class PathOverviewScreen extends StatelessWidget {
             const SizedBox(
               height: 8,
             ),
-            // AllDirectionsBody(
-            //   directionsList: (data['path'] as List).forEach((element) { }) ,
-            //   bgColor: Color.fromARGB(255, 255, 186, 229),
-            // ),
             Expanded(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(20),
@@ -123,10 +118,10 @@ class PathOverviewScreen extends StatelessWidget {
                       color: Provider.of<AppTheme>(context, listen: true)
                               .isDarkMode
                           ? Colors.grey
-                          : Color.fromARGB(255, 255, 186, 229),
+                          : const Color.fromARGB(255, 255, 186, 229),
                       borderRadius: BorderRadius.circular(20)),
                   child: ListView.builder(
-                      padding: EdgeInsets.only(top: 10, bottom: 10),
+                      padding: const EdgeInsets.only(top: 10, bottom: 10),
                       scrollDirection: Axis.vertical,
                       itemCount: data.paths!.length,
                       itemBuilder: (BuildContext ctx, index) {
@@ -148,7 +143,6 @@ class PathOverviewScreen extends StatelessWidget {
                 ),
               ),
             ),
-
             const SizedBox(height: 20),
             FloatingActionButton(
               heroTag: "startBtn",

@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:flutter_vector_icons/flutter_vector_icons.dart';
-import 'package:puffway/widgets/path_info_item.dart';
 import 'package:puffway/widgets/reversed_path_info_item.dart';
 
 import '../providers/path.dart';
-import '../providers/pathway.dart';
 
 class DirectionScreen extends StatelessWidget {
   static const routeName = "/directions";
 
-  DirectionScreen({super.key});
+  const DirectionScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
