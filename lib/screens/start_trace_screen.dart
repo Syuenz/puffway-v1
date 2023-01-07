@@ -375,7 +375,6 @@ class _StartTraceScreenState extends State<StartTraceScreen> {
       });
       refreshDegrees = true;
       pathHandler();
-      // refreshDegrees = true;
     }
   }
 
