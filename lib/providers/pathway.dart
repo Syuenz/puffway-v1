@@ -1,11 +1,10 @@
-import 'dart:io';
+// Programmer name: Chew Chai Syuen
+// Program name: Puffway
+// Description: An Indoor Vehicle Locator Mobile Application
+// First Written on: 20/10/2022
+// Edited on: 1/6/2023
 
-import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/services.dart';
-import 'package:path/path.dart';
-import 'package:platform_device_id/platform_device_id.dart';
-import 'package:provider/provider.dart';
 import 'package:puffway/providers/path.dart';
 
 class Pathway {
